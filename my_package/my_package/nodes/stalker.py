@@ -13,9 +13,11 @@ from rclpy.node import Node
 from ultralytics import YOLO
 import matplotlib.pyplot as plt
 from geometry_msgs.msg import Pose
-from my_package_msgs.msg import PolarCoordinates
+from periscope_msgs.msg import PolarPoints
 from geometry_msgs.msg import PoseWithCovarianceStamped
 import transforms3d as tf
+
+from sensor_msgs.msg import Image # Image is the message type
 from cv_bridge import CvBridge # Package to convert between ROS and OpenCV Images
 import cv2 # OpenCV library
 
@@ -94,9 +96,12 @@ class Stalker(Node):
                                                          'camera_posecov', 
                                                          self.__update_camera_pose, 
                                                          10)
-        self._publisher = self.create_publisher(PolarCoordinates, 
-                                                'vessels_location', 
-                                                10) 
+        self._polar_points_publisher = self.create_publisher(PolarPoints, 
+                                                             'vessels_location', 
+                                                             10) 
+        self._video_frames_publisher = self.create_publisher(Image, 
+                                                             'video_frames',
+                                                             10)
         
         # Create the timer
         self.timer = self.create_timer(0.01, self.stalking_callback)
@@ -315,7 +320,7 @@ class Stalker(Node):
         return A_wk_polar
 
     def stalking_callback(self):
-        msg = PolarCoordinates()
+        msg = PolarPoints()
         #ret, frame = self.__cap.read()
         #
         #if ret == True:
@@ -333,7 +338,7 @@ class Stalker(Node):
             if polar_points_world.shape != (2,0):
                 msg.phi = list(polar_points_world[:, 0])
                 msg.rho = list(polar_points_world[:, 1])
-                self._publisher.publish(msg)
+                self._polar_points_publisher.publish(msg)
                 
             if result.boxes.id is not None:
                 detections.tracker_id = result.boxes.id.cpu().numpy().astype(int) 
@@ -345,6 +350,7 @@ class Stalker(Node):
             ]
             
             frame = self.__box_annotator.annotate(scene=frame, detections=detections, labels=labels)
+            self._video_frames_publisher.publish(self.br.cv2_to_imgmsg(frame))
             break
             #cv2.imshow("yolov8", imutils.resize(frame, width=640))
             #if (cv2.waitKey(20) == ord("q")):

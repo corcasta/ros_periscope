@@ -22,7 +22,8 @@ setup(
         'console_scripts': [
             'my_node = my_package.nodes.my_node:main',
             'demo = my_package.nodes.demo:main',
-            'stalker = my_package.nodes.stalker:main'
+            'stalker = my_package.nodes.stalker:main',
+            'video = my_package.nodes.cam_sub:main'
         ],
     },
 )
