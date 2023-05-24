@@ -23,7 +23,7 @@ from cv_bridge import CvBridge # Package to convert between ROS and OpenCV Image
 
 
 class Stalker(Node):
-    def __init__(self, device=0, classes=[32], camera_resolution=(1920, 1080)):
+    def __init__(self, device=0, model="yolo_demo.pt", classes=[32], camera_resolution=(1920, 1080)):
         """
         In charge of doing all the setup and processing for target localization 
         and publishing coordinates across subscribed nodes.
@@ -31,6 +31,8 @@ class Stalker(Node):
         Args:
             device (int, optional): Camera to listen for input. 
                                     Defaults to 0.
+            model (string, optional): Model's file name.
+                                      Defaults to "yolo_demo.pt"
             classes (list, optional): Which clases to detect while using Yolo model. 
                                       Defaults to [32].
             camera_resolution (tuple, optional): Resolution of input camera. 
@@ -41,7 +43,7 @@ class Stalker(Node):
         #self.__device = device #Camera ID for input
         self.__base_path = os.path.abspath(os.path.dirname(__file__))
         self.__parent_path = str(Path(self.__base_path).parent)
-        self.__relative_path_model = "/weights/yolo_demo.pt"
+        self.__relative_path_model = "/weights/{}".format(model)
         self.__detector = YOLO(self.__parent_path  + self.__relative_path_model)
         self.__tracker = self.__detector.track(device, 
                                                classes=classes,

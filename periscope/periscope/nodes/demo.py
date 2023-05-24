@@ -29,7 +29,7 @@ else:
 def main():
     base_path = os.path.abspath(os.path.dirname(__file__))
     parent_path = str(Path(base_path).parent)
-    relative_path_video = "videos/DJI_0042.MOV"
+    relative_path_video = "videos/sail_amsterdam.mp4"
     relative_path_model = "weights/best_medium.pt"
 
     
