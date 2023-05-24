@@ -1,6 +1,6 @@
 from setuptools import setup
 
-package_name = 'my_package'
+package_name = 'periscope'
 
 setup(
     name=package_name,
@@ -20,10 +20,9 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'my_node = my_package.nodes.my_node:main',
-            'demo = my_package.nodes.demo:main',
-            'stalker = my_package.nodes.stalker:main',
-            'video = my_package.nodes.cam_sub:main'
+            'demo = periscope.nodes.demo:main',
+            'stalker = periscope.nodes.stalker:main',
+            'video = periscope.nodes.video_sub:main'
         ],
     },
 )

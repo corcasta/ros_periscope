@@ -11,7 +11,6 @@ import matplotlib.pyplot as plt
 import rclpy
 from rclpy.node import Node
 #from std_msgs.msg import String
-from my_package_msgs.msg import PolarCoordinates
 
 
 """
@@ -30,7 +29,7 @@ else:
 def main():
     base_path = os.path.abspath(os.path.dirname(__file__))
     parent_path = str(Path(base_path).parent)
-    relative_path_video = "videos/sail_amsterdam.mp4"
+    relative_path_video = "videos/DJI_0042.MOV"
     relative_path_model = "weights/best_medium.pt"
 
     
@@ -103,9 +102,7 @@ def main():
         cv2.putText(frame, "FPS: {}".format(fps), (7, 30), font, 1, (100, 255, 0), 3, cv2.LINE_AA)
   
         
-        cv2.imshow("Ships-Detection-YoloV8n", frame)
-        
-        print(type(PolarCoordinates))
+        cv2.imshow("Ships-Detection-YoloV8n", imutils.resize(frame, width=1280))
         if (cv2.waitKey(20) == ord("q")):
             break
     
