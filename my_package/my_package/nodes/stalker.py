@@ -12,19 +12,30 @@ import supervision as sv
 from rclpy.node import Node
 from ultralytics import YOLO
 import matplotlib.pyplot as plt
-from geometry_msgs.msg import Pose
 from periscope_msgs.msg import PolarPoints
 from geometry_msgs.msg import PoseWithCovarianceStamped
 import transforms3d as tf
 
 from sensor_msgs.msg import Image # Image is the message type
 from cv_bridge import CvBridge # Package to convert between ROS and OpenCV Images
-import cv2 # OpenCV library
+
 
 
 
 class Stalker(Node):
     def __init__(self, device=0, classes=[32], camera_resolution=(1920, 1080)):
+        """
+        In charge of doing all the setup and processing for target localization 
+        and publishing coordinates across subscribed nodes.
+        
+        Args:
+            device (int, optional): Camera to listen for input. 
+                                    Defaults to 0.
+            classes (list, optional): Which clases to detect while using Yolo model. 
+                                      Defaults to [32].
+            camera_resolution (tuple, optional): Resolution of input camera. 
+                                                 Defaults to (1920, 1080).
+        """
         super().__init__('stalker')
         #Attributes for setting up YOLO
         #self.__device = device #Camera ID for input
@@ -54,7 +65,7 @@ class Stalker(Node):
         self.drone_psi   = 0
         self.drone_Od_x  = 0
         self.drone_Od_y  = 0
-        self.drone_Od_z  = 0
+        self.drone_Od_z  = 0.235
 
         
         #Camera pose relative to World frame:
@@ -88,7 +99,7 @@ class Stalker(Node):
         
         
         # ROS components for communication
-        self._drone_pose = self.create_subscription(Pose, 
+        self._drone_pose = self.create_subscription(PoseWithCovarianceStamped, 
                                                     'drone_pose', 
                                                     self.__update_drone_pose, 
                                                     10)
@@ -109,15 +120,25 @@ class Stalker(Node):
     
     
     def __update_drone_pose(self, msg):
-        #print("Type: {} \t {}".format(type(msg.position), msg.position))
-        self.drone_Od_x = msg.position.x
-        self.drone_Od_y = msg.position.y
-        self.drone_Od_z = msg.position.z
+        """
+        Updates drone pose state.        
+
+        Args:
+            msg (PoseWithCovarianceStamped): ros message of type PoseWithCovariance,
+                                             containing drone pose info.
         
-        quaternion = [msg.orientation.x,
-                      msg.orientation.y, 
-                      msg.orientation.z, 
-                      msg.orientation.w]
+        Returns:
+            None                                     
+        """
+        #print("Type: {} \t {}".format(type(msg.position), msg.position))
+        self.drone_Od_x = msg.pose.pose.position.x
+        self.drone_Od_y = msg.pose.pose.position.y
+        self.drone_Od_z = msg.pose.pose.position.z
+        
+        quaternion = [msg.pose.pose.position.x,
+                      msg.pose.pose.position.y, 
+                      msg.pose.pose.position.z, 
+                      msg.pose.pose.position.w]
         
         angles = tf.euler.quat2euler(quaternion, axes="sxyz")
         
@@ -131,7 +152,17 @@ class Stalker(Node):
         #self.get_logger().info("Type: {} \t {}".format(type(msg.position), msg.position))
         
     
-    def __update_camera_pose(self, msg):        
+    def __update_camera_pose(self, msg):
+        """
+        Updates camera pose state.        
+
+        Args:
+            msg (PoseWithCovarianceStamped): ros message of type PoseWithCovariance,
+                                             containing camera pose info.
+        
+        Returns:
+            None                            
+        """        
         #print("Type: {} \t {}".format(type(msg.pose.pose.position), msg.pose.pose.position))
         self.camera_Od_x  = msg.pose.pose.position.x
         self.camera_Od_y  = msg.pose.pose.position.y
@@ -154,11 +185,24 @@ class Stalker(Node):
     
     def _denormalize(self, points):
         """
+        Denormalize pixel coords of YOLO detected objects.
+        Denormalize means retrieve the actual (x, y) of the image in pixels.
+        
         Normalization Formulas:    
             Normalized(Xcentre) = (x_centre)/Image_Width
             Normalized(Ycentre) = (y_centre)/Image_Height
             Normalized(w) = w/Image_Width
             Normalized(h) = h/Image_Height
+            
+        Args:
+            points (numpy.ndarray): Array of shape (N, 2).
+                                    Array of normalized pixel coords (x, y) 
+                                    of detected objects in the image. 
+        
+        Returns:
+            points (numpy.ndarray): Array of shape (N, 2).
+                                    Array of denormalized pixel coords (x, y)
+                                    of detected objects in the image. 
         """
         
         #DENORMALIZE
@@ -166,10 +210,11 @@ class Stalker(Node):
         points[:, 0] = points[:, 0]*self.cam_width 
         # y-center-bb
         points[:, 1] = points[:, 1]*self.cam_height
-        # width-bb 
-        points[:, 2] = points[:, 2]*self.cam_width 
-        # height-bb
-        points[:, 3] = points[:, 3]*self.cam_height 
+        
+        ## width-bb 
+        #objects[:, 2] = objects[:, 2]*self.cam_width 
+        ## height-bb
+        #objects[:, 3] = objects[:, 3]*self.cam_height 
         
         return points
     
@@ -182,11 +227,26 @@ class Stalker(Node):
         return points
     
 
-    def _undistort(self, points, k, distortion, iter_num=5):
-        #print("distortion: {}".format(distortion))
-        k1, k2, p1, p2, k3 = np.squeeze(distortion)
-        fx, fy = k[0, 0], k[1, 1]
-        cx, cy = k[:2, 2]
+    def _undistort(self, points, cam_intrinsics, dist_coeffs, iter_num=5):
+        """
+        Undistort pixel point in image.
+        Undistort means retrieve the real (x, y) of the frame in pixels 
+        by taking into account camera intrinsics and distortion coefficients.
+            
+        Args:
+            points (numpy.ndarray): Array of shape (N, 2).
+                                    Array of raw pixel coords (x, y) 
+                                    of detected objects in the image. 
+        
+        Returns:
+            points (numpy.ndarray): Array of shape (N, 2).
+                                    Array of undistorted pixel coords (x, y)
+                                    of detected objects in the image. 
+        """
+        
+        k1, k2, p1, p2, k3 = np.squeeze(dist_coeffs)
+        fx, fy = cam_intrinsics[0, 0], cam_intrinsics[1, 1]
+        cx, cy = cam_intrinsics[:2, 2]
         x = points[:, 0]
         y = points[:, 1]    
         
@@ -203,78 +263,111 @@ class Stalker(Node):
             delta_y = p1 * (r2 + 2 * y**2) + 2 * p2 * x*y
             x = (x0 - delta_x) * k_inv
             y = (y0 - delta_y) * k_inv
-        return np.array((x * fx + cx, y * fy + cy))
+        
+        #print("Inside undistort: x shape: {}".format(x.shape))
+        #print("Inside undistort: y shape: {}".format(y.shape))
+        #print("DEBUG: {}".format( np.column_stack((x,y)).shape ) )
+        
+        points = np.column_stack((x * fx + cx, y * fy + cy))
+        return points
     
     
-    def _cart2pol(self, x, y):
+    def _cart2pol(self, points):
         """
-        x:  numpy array composed of x coords for each detected object
-        y:  numpy array composed of y coords for each detected object
+        Transform cartesian points (x,y,z) in to polar points (rho, phi).
+            
+        Args:
+            points (numpy.ndarray): Array of shape (N, 2) or (N, 3).
+                                    Array of cartesian coords (x, y) or (x, y, z). 
+        
+        Returns:
+            points (numpy.ndarray): Array of shape (N, 2).
+                                    Array of polar coords (rho, phi).
         """
+        
+        x = points[:, 0]
+        y = points[:, 1]
+        
         rho = np.sqrt(x**2 + y**2).reshape(-1,1)
         phi = np.arctan2(y, x).reshape(-1,1)
         
-        return np.hstack((rho, phi))
+        polar_points = np.hstack((rho, phi))
+        
+        return polar_points
     
     
-    def _pol2cart(self, rho, phi):
+    def _pol2cart(self, points):
         """
-        rho:  numpy array composed of rho for each detected object
-        phi:  numpy array composed of phi for each detected object
+        Transform polar coords (x,y,z) in to cartesian coords (rho, phi).
+            
+        Args:
+            points (numpy.ndarray): Array of shape (N, 2).
+                                    Array of polar coords (rho, phi). 
+        
+        Returns:
+            points (numpy.ndarray): Array of shape (N, 2).
+                                    Array of cartesian coords (x, y).
         """
+        
+        rho = points[:, 0]
+        phi = points[:, 1]
+        
         x = (rho * np.cos(phi)).reshape(-1,1)
         y = (rho * np.sin(phi)).reshape(-1,1)
         
-        return np.hstack((x, y))
+        cart_points = np.hstack((x, y))
+        
+        return cart_points
 
     def localize(self, points):
-        """_summary_
+        """
+        Localize points from image plane into world frame represented in polar coords.
+        
 
         Args:
-            points (_type_): raw pixel points from yolo model
-
+            points (numpy.ndarray): Array of shape (N, 2).
+                                    Array of normalized pixel coords (x, y) 
+                                    of detected objects in the image. 
+        
         Returns:
-            _type_: _description_
+            points (numpy.ndarray): Array of shape (N, 2).
+                                    Array of polar coords (rho, phi).
+         
         """
-        if points.numpy().size == 0:
-            return torch.transpose(points[:, 0:2], 0, 1).numpy()
-
+        
         points = self._denormalize(points) 
-        points = self._shift(points)
-        points = points.numpy()[:,0:2]
+        #points = self._shift(points)
+        points = self._undistort(points, self.intrinsic_matrix, self.dist_coefficients)
         
         # These points will be rearrange to be:
         #   row0: x
         #   row1: y
-        #   columns: represents individual points 
-        # After calling _undistort     
-        points = self._undistort(points, self.intrinsic_matrix, self.dist_coefficients)
-        #print(points)
-        #points = torch.transpose(points[:, 0:2], 0, 1).numpy()
-  
+        #   columns: represents individual points   
+        points = points.transpose()
+
         #Drone pose relative to World frame:
-        phi   = 0
-        theta = 0
-        psi   = 0
-        Od_x  = 0
-        Od_y  = 0
-        Od_z  = 0.235
+        #phi   = 0
+        #theta = 0
+        #psi   = 0
+        #Od_x  = 0
+        #Od_y  = 0
+        #Od_z  = 0.235
         
-        rot_x = np.asarray([[1,           0,            0],
-                            [0, np.cos(phi), -np.sin(phi)],
-                            [0, np.sin(phi),  np.cos(phi)]])
+        rot_x = np.asarray([[1,                      0,                       0],
+                            [0, np.cos(self.drone_phi), -np.sin(self.drone_phi)],
+                            [0, np.sin(self.drone_phi),  np.cos(self.drone_phi)]])
         
-        rot_y = np.asarray([[np.cos(theta),  0, np.sin(theta)],
-                            [0,              1,             0],
-                            [-np.sin(theta), 0, np.cos(theta)]])
+        rot_y = np.asarray([[np.cos(self.drone_theta),  0, np.sin(self.drone_theta)],
+                            [0,                         1,                        0],
+                            [-np.sin(self.drone_theta), 0, np.cos(self.drone_theta)]])
         
-        rot_z = np.asarray([[np.cos(psi), -np.sin(psi), 0],
-                            [np.sin(psi),  np.cos(psi), 0],
-                            [0,                      0, 1]])
+        rot_z = np.asarray([[np.cos(self.drone_psi), -np.sin(self.drone_psi), 0],
+                            [np.sin(self.drone_psi),  np.cos(self.drone_psi), 0],
+                            [0,                                            0, 1]])
         
         rot_wd = rot_x @ rot_y @ rot_z
         t_wd = np.vstack((rot_wd, [0,0,0]))
-        t_wd = np.hstack((t_wd, [[Od_x], [Od_y], [Od_z], [1]]))
+        t_wd = np.hstack((t_wd, [[self.drone_Od_x ], [self.drone_Od_y], [self.drone_Od_z], [1]]))
         
         
         #Camera pose relative to Drone frame:
@@ -306,157 +399,64 @@ class Stalker(Node):
         # in a format where each row represents a unique point
         # instead of the mathematical matrix representation
         # where each column represents a unique point.
-        A_wk = np.transpose(A_wk)
+        #A_wk = np.transpose(A_wk)
+        A_wk = A_wk.transpose()
         
         #Point K with respect to World Frame in Polar coords
-        A_wk_polar = self._cart2pol(A_wk[:, 0], A_wk[:, 1])
+        A_wk_polar = self._cart2pol(A_wk)
         
         #DEBUG
         #print("Before: Cart-Pixel_Coords: \n{}".format(A_wk))
         #print("During: Polar-Pixel_Coords: \n{}".format(A_wk_polar))
-        #A_wk_cart = self._pol2cart(A_wk_polar[:, 0], A_wk_polar[:, 1])
+        #A_wk_cart = self._pol2cart(A_wk_polar)
         #print("After: Cart-Pixel_Coords: \n{}".format(A_wk_cart ))
         
         return A_wk_polar
 
     def stalking_callback(self):
+        """
+        Main loop of the ros node (stalker) 
+        """
         msg = PolarPoints()
-        #ret, frame = self.__cap.read()
-        #
-        #if ret == True:
-            # Run YOLOv8 inference on the frame
-        counter = 1
+
         for result in self.__tracker:
-            print("Counter: ", counter)
-            counter += 1
             frame = result.orig_img
             detections = sv.Detections.from_yolov8(result)
-            points = result.boxes.xywhn
-            polar_points_world = self.localize(points)
             
-            #If objects exist publis locations
-            if polar_points_world.shape != (2,0):
+            # Normalized Bounding Boxes of detected boats
+            boats_bbn = result.boxes.xywhn.numpy()
+            # Normalized X,Y of detected boats
+            boats = boats_bbn[0:2]
+            
+            # If objects exist publish locations
+            if boats.size != 0:
+                polar_points_world = self.localize(boats)
                 msg.phi = list(polar_points_world[:, 0])
                 msg.rho = list(polar_points_world[:, 1])
                 self._polar_points_publisher.publish(msg)
+                    
+                if result.boxes.id is not None:
+                    detections.tracker_id = result.boxes.id.cpu().numpy().astype(int) 
+                    
+                labels = [
+                    f"#:{tracker_id}, {self.__detector.model.names[class_id]}: {confidence:0.2f}"
+                    for xyxy, mask, confidence, class_id, tracker_id 
+                    in detections
+                ]
                 
-            if result.boxes.id is not None:
-                detections.tracker_id = result.boxes.id.cpu().numpy().astype(int) 
-                
-            labels = [
-                f"#:{tracker_id}, {self.__detector.model.names[class_id]}: {confidence:0.2f}"
-                for xyxy, mask, confidence, class_id, tracker_id 
-                in detections
-            ]
-            
-            frame = self.__box_annotator.annotate(scene=frame, detections=detections, labels=labels)
+                frame = self.__box_annotator.annotate(scene=frame, detections=detections, labels=labels)
             self._video_frames_publisher.publish(self.br.cv2_to_imgmsg(frame))
             break
-            #cv2.imshow("yolov8", imutils.resize(frame, width=640))
-            #if (cv2.waitKey(20) == ord("q")):
-            #    break
             
     
 def main(args=None):
-    rclpy.init(args=args)
-    
-    stalker_node = Stalker(classes=[32])
+    rclpy.init(args=args) 
+    stalker_node = Stalker(device=2, classes=[32, 49])
     rclpy.spin(stalker_node)
     stalker_node.destroy_node()
     rclpy.shutdown()
     
-    """
-    base_path = os.path.abspath(os.path.dirname(__file__))
-    parent_path = str(Path(base_path).parent)
-    relative_path_model = "/weights/yolo_demo.pt"
-    device = 0
     
-    model = YOLO(parent_path  + relative_path_model)
-    stalker = Stalker()
-
-    #*********************FPS-DISPLAY-SETTINGS***********************
-    # used to record the time when we processed last frame
-    prev_frame_time = 0
-    # used to record the time at which we processed current frame
-    new_frame_time = 0
-    # font which we will be using to display FPS
-    font = cv2.FONT_HERSHEY_SIMPLEX
-    #*********************FPS-DISPLAY-SETTINGS***********************
-    
-    box_annotator = sv.BoxAnnotator(
-            thickness=1,
-            text_thickness=1,
-            text_scale=0.5,
-            text_padding=5
-        )
-    
-    msg = PolarCoordinates() #Create message object for publishing
-    
-    #Main loop
-    for result in model.track(source=device, 
-                              classes=[32], 
-                              conf=0.3, 
-                              show=False, 
-                              stream=True):   
-        
-        #Reading any subscribe message 
-        rclpy.spin_once(stalker, timeout_sec=0.1)
-        
-        frame = result.orig_img
-        detections = sv.Detections.from_yolov8(result)
-        
-        
-        points = result.boxes.xywhn
-        polar_points_world = stalker.localize(points)
-        
-        
-        
-        #If objects exist publis locations
-        if polar_points_world.shape != (2,0):
-            msg.phi = list(polar_points_world[:, 0])
-            msg.rho = list(polar_points_world[:, 1])
-            stalker.publish(msg)
-        
-        
-        #points = denormali/ze(result.boxes.xywhn, camera_resolution=(1920, 1080))
-        #points = shift(points)
-        #Path(x_coords).parent          + = points[:, 0]
-        #y_coords = points[:, 1]
-        #points = torch.transpose(points[:, 0:2], 0, 1).numpy()
-        #points_world = localize(points)
-        #print("Pixel_Coords: \n{} ".format(polar_points_world))
-        
-        if result.boxes.id is not None:
-            detections.tracker_id = result.boxes.id.cpu().numpy().astype(int) 
-            
-        labels = [
-            f"#:{tracker_id}, {model.model.names[class_id]}: {confidence:0.2f}"
-            for xyxy, mask, confidence, class_id, tracker_id 
-            in detections
-        ]
-
-        frame = box_annotator.annotate(scene=frame, detections=detections, labels=labels)
-
-        # time when we finish processing for this frame
-        new_frame_time = time.time()
-        # fps will be number of frame processed in given time frame
-        # since their will be most of time error of 0.001 second
-        # we will be subtracting it to get more accurate result
-        fps = 1/(new_frame_time-prev_frame_time)
-        prev_frame_time = new_frame_time
-        # converting the fps into integer
-        fps = int(fps)
-        # converting the fps to string so that we can display it on frame
-        # by using putText function
-        fps = str(fps)
-
-        # putting the FPS count on the frame
-        cv2.putText(frame, "FPS: {}".format(fps), (7, 30), font, 1, (100, 255, 0), 3, cv2.LINE_AA)
-        cv2.imshow("yolov8", imutils.resize(frame, width=640))
-        
-        if (cv2.waitKey(20) == ord("q")):
-            break
-        """
          
 if __name__ == "__main__":    
     # Setting the starting path of the script
