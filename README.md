@@ -1,28 +1,35 @@
-## De que se trata este paquete?
-Este paquete está contemplado para ser utilizado en la competencia **MBZIRC 2024**.
-Contiene todo lo necesario para poder detectar y localizar botes utilizando una camara montada a un drone.  
+# Periscope package
+This package is intended for use in the **MBZIRC 2024** competition. It contains the infrastructure for detecting and locating marine boats using a camera mounted on a drone. Only trained and/or customized model from the YoloV8 family needs to be provided (the current package includes 4 pre-trained models by default).
 
 Package file structure:  
 - **cam_details/** This folder contains camera intrinsics and distortion coefficients data.
 - **nodes/** This folder contains all nodes scripts.
 - **videos/**  This folder contains all videos for benchmark and testing.
-- **weights/** This folder contains the actual weights of trained models.
+- **weights/** This folder contains the actual weights of all trained models.
 
 If you train a new model the **.pt** file should be placed mandatory in **weights/** and only there, the same for any video used as a benchmark but in that case in **videos/**. 
 
 
+## Virtual environments
+If you are using virtual environments with ros, you can leave the following code snippet in `setup.cfg` otherwise remove it.
+
+```python
+[build_scripts]
+executable=/usr/bin/env python3	
+```
+
 ## Stalker node
-Nodo principal encargado de la deteccion y localizacion de los botes.
+Main node responsible for the detection and localization of the boats.
 
-- Subscripciones: 
-    - **/drone_posecov**: Pose actual del drone y su respectiva covarianza.
-    - **/camera_posecov**: Pose actual de la camara y su respectiva covarianza. 
+- Subscriptions: 
+    - **/drone_posecov**: Current pose of the drone and its respective covariance.
+    - **/camera_posecov**: Current pose of the camera and its respective covariance.
 
-- Publicaciones: 
-    - **/boats_location**:  Coordenadas polares de todos los objetos detectados en la imagen.
-    - **/video_stream**: Image frames con los bounding boxes para visualizar la deteccion de los objetos. 
+- Publications: 
+    - **/boats_location**:  Polar coordinates of all detected objects in the image. imagen.
+    - **/video_stream**: Image frames with bounding boxes to visualize object detection.
 
-**ULTRA Important**, before starting the node make sure to have define the appropriate params for your system when creating a Stalker node object inside main in **stalker.py**  
+**ULTRA Important**, before starting the node make sure to have define the appropriate params for your system when creating a Stalker node object inside main in `stalker.py`  
 ```python
 Args:
     device (int, optional): Camera to listen for input. 
@@ -51,16 +58,15 @@ ros2 run periscope stalker
 ```
 
 ## Video node
-Nodo utilizado únicamente para visualizar las detecciones del modelo.
+Node used solely for visualizing model detections.
 ```bash
 ros2 run periscope video
 ```
 
 ## Demo node
-Nodo utilizado para probar la capacidad de deteccion del modelo entrenado.
-Pueden considerarlo como un Benchmark.  
+Node used to test the detection capability of the trained model. It can be considered as a benchmark application.
 
-**ULTRA Important**, before starting the node make sure to have define the appropriate model to test and optional the video inside main in **demo.py**  
+**ULTRA Important**: Before starting the node, make sure to define the appropriate model to test and optionally specify the video inside the `main` function in `demo.py`. 
 
 ```python
 def main():
