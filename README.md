@@ -9,6 +9,13 @@ Package file structure:
 
 If you train a new model the **.pt** file should be placed mandatory in **weights/** and only there, the same for any video used as a benchmark but in that case in **videos/**. 
 
+## Requirements
+Make sure to have installed [ROS2 Humble](https://docs.ros.org/en/humble/Installation.html) on your system.  
+Install all Python dependencies using the following command:
+```bash
+pip install -r requirements.txt
+
+```
 
 ## Virtual environments
 If you are using virtual environments with ros, you can leave the following code snippet in `setup.cfg` otherwise remove it.
@@ -30,7 +37,7 @@ Main node responsible for the detection and localization of the boats.
     - **/video_stream**: Image frames with bounding boxes to visualize object detection.
 
 **ULTRA Important**, before starting the node make sure to have define the appropriate params for your system when creating a Stalker node object inside main in `stalker.py`  
-```python
+```bash
 Args:
     device (int, optional): Camera to listen for input. 
                             Defaults to 0.
