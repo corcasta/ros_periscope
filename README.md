@@ -31,13 +31,13 @@ executable=/usr/bin/env python3
 ## Stalker node
 Main node responsible for the detection and localization of the boats.
 
-- Subscriptions: 
-    - **/drone_posecov**: Current pose of the drone and its respective covariance.
-    - **/camera_posecov**: Current pose of the camera and its respective covariance.
+- Subscriptions Topics: 
+    - **/drone_posecov** Current pose of the drone and its respective covariance.
+    - **/camera_posecov** Current pose of the camera and its respective covariance.
 
-- Publications: 
-    - **/boats_location**:  Polar coordinates of all detected objects in the image. imagen.
-    - **/video_stream**: Image frames with bounding boxes to visualize object detection.
+- Publications Topics: 
+    - **/boats_location**  Polar coordinates of all detected objects in the image.
+    - **/video_stream** Image frames with bounding boxes to visualize object detection.
 
 **ULTRA Important**, before starting the node make sure to have define the appropriate params for your system when creating a Stalker node object inside main in `stalker.py`  
 ```bash
