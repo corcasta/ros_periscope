@@ -7,7 +7,9 @@ Package file structure:
 - **videos/**  This folder contains all videos for benchmark and testing.
 - **weights/** This folder contains the actual weights of all trained models.
 
-If you train a new model the **.pt** file should be placed mandatory in **weights/** and only there, the same for any video used as a benchmark but in that case in **videos/**. 
+If you train a new model the **.pt** file should be placed mandatory in **weights/** and only there, the same for any video used as a benchmark but in that case in **videos/**.
+
+The second package, **periscope_msgs**, contains a custom interface for communicating the locations of marine boats..
 
 ## Requirements
 Make sure to have installed [ROS2 Humble](https://docs.ros.org/en/humble/Installation.html) on your system.  
@@ -84,5 +86,3 @@ Now you can initialize the stalker node.
 ```bash
 ros2 run periscope demo
 ```
-
- 
