@@ -102,7 +102,7 @@ class Stalker(Node):
         
         # ROS components for communication
         self._drone_pose = self.create_subscription(PoseWithCovarianceStamped, 
-                                                    'drone_pose', 
+                                                    'drone_posecov', 
                                                     self.__update_drone_pose, 
                                                     10)
         self._camera_pose_cov = self.create_subscription(PoseWithCovarianceStamped, 
@@ -110,10 +110,10 @@ class Stalker(Node):
                                                          self.__update_camera_pose, 
                                                          10)
         self._polar_points_publisher = self.create_publisher(PolarPoints, 
-                                                             'vessels_location', 
+                                                             'boats_location', 
                                                              10) 
         self._video_frames_publisher = self.create_publisher(Image, 
-                                                             'video_frames',
+                                                             'video_stream',
                                                              10)
         
         # Create the timer

@@ -27,11 +27,13 @@ else:
 
        
 def main():
+    model_file_name = "best_medium.pt"
+    video_file_name = "sail_amsterdam.mp4"
+    
     base_path = os.path.abspath(os.path.dirname(__file__))
     parent_path = str(Path(base_path).parent)
-    relative_path_video = "videos/sail_amsterdam.mp4"
-    relative_path_model = "weights/best_medium.pt"
-
+    relative_path_video = "videos/" + video_file_name
+    relative_path_model = "weights/" + model_file_name
     
     #*********************FPS-DISPLAY-SETTINGS***********************
     # used to record the time when we processed last frame
