@@ -23,7 +23,7 @@ pip install -r requirements.txt
 ## Virtual environments
 If you are using virtual environments with ros, you can leave the following code snippet in `setup.cfg` otherwise remove it.
 
-```config
+```cfg
 [build_scripts]
 executable=/usr/bin/env python3	
 ```
