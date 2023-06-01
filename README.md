@@ -40,7 +40,7 @@ Main node responsible for the detection and localization of the boats.
     - **/video_stream** Image frames with bounding boxes to visualize object detection.
 
 **ULTRA Important**, before starting the node make sure to have define the appropriate params for your system when creating a Stalker node object inside main in `stalker.py`  
-```bash
+```text
 Args:
     device (int, optional): Camera to listen for input. 
                             Defaults to 0.
