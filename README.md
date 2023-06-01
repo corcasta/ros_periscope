@@ -28,6 +28,23 @@ If you are using virtual environments with ros, you can leave the following code
 executable=/usr/bin/env python3	
 ```
 
+## Demo node
+Node used to test the detection capability of the trained model. It can be considered as a benchmark application.
+
+**ULTRA Important**: Before starting the node, make sure to define the appropriate model to test and optionally specify the video inside the `main` function in `demo.py`. 
+
+```python
+def main():
+    model_file_name = "best_medium.pt"
+    video_file_name = "sail_amsterdam.mp4"
+```
+Now you can initialize the stalker node.  
+**Note**: If everything has been installed properly you should be able to run the node (DON'T FORGET TO BUILD THE PACKAGE)
+```bash
+ros2 run periscope demo
+```
+
+
 ## Stalker node
 Main node responsible for the detection and localization of the boats.
 
@@ -71,19 +88,4 @@ ros2 run periscope stalker
 Node used solely for visualizing model detections.
 ```bash
 ros2 run periscope video
-```
-
-## Demo node
-Node used to test the detection capability of the trained model. It can be considered as a benchmark application.
-
-**ULTRA Important**: Before starting the node, make sure to define the appropriate model to test and optionally specify the video inside the `main` function in `demo.py`. 
-
-```python
-def main():
-    model_file_name = "best_medium.pt"
-    video_file_name = "sail_amsterdam.mp4"
-```
-Now you can initialize the stalker node.
-```bash
-ros2 run periscope demo
 ```
