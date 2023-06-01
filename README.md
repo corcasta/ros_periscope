@@ -46,8 +46,8 @@ Args:
                             Defaults to 0.
     model (string, optional): Model's file name.
                               Defaults to "yolo_demo.pt"
-    classes (list, optional): Which clases to detect while using Yolo model. 
-                              Defaults to [32].
+    classes (list, optional): Which classes ids to detect while using Yolo model. 
+                              Defaults to [32] (sports ball).
     camera_resolution (tuple, optional): Resolution of input camera. 
                                          Defaults to (1920, 1080).
 ```
