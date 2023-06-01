@@ -2,10 +2,10 @@
 This package is intended for use in the **MBZIRC 2024** competition. It contains the infrastructure for detecting and locating marine boats using a camera mounted on a drone. Only trained and/or customized model from the YoloV8 family needs to be provided (the current package includes 4 pre-trained models by default).
 
 Package file structure:  
-- **cam_details/** This folder contains camera intrinsics and distortion coefficients data.
-- **nodes/** This folder contains all nodes scripts.
-- **videos/**  This folder contains all videos for benchmark and testing.
-- **weights/** This folder contains the actual weights of all trained models.
+- **cam_details/** This directory contains camera intrinsics and distortion coefficients data.
+- **nodes/** This directory contains all nodes scripts.
+- **videos/**  This directory contains all videos for benchmark and testing.
+- **weights/** This directory contains the actual weights of all trained models.
 - `package.xml`, `setup.cfg` and `setup.py` are just configuration files require by ros.
 
 If you train a new model the **.pt** file should be placed mandatory in **weights/** and only there, the same for any video used as a benchmark but in that case in **videos/**.
