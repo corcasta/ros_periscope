@@ -44,7 +44,7 @@ Main node responsible for the detection and localization of the boats.
 Args:
     device (int, optional): Camera to listen for input. 
                             Defaults to 0.
-    model (string, optional): Model's file name.
+    model (string, optional): Model's weights file name.
                               Defaults to "yolo_demo.pt"
     classes (list, optional): Which classes ids to detect while using Yolo model. 
                               Defaults to [32] (sports ball).
