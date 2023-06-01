@@ -67,7 +67,7 @@ class Stalker(Node):
         self.drone_psi   = 0
         self.drone_Od_x  = 0
         self.drone_Od_y  = 0
-        self.drone_Od_z  = 0.235
+        self.drone_Od_z  = 0.001
 
         
         #Camera pose relative to World frame:
