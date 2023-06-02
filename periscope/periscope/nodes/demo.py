@@ -30,14 +30,11 @@ def main():
     font = cv2.FONT_HERSHEY_SIMPLEX
     #*********************FPS-DISPLAY-SETTINGS***********************
     
-    #Loading Test dataset
-    #test_imgs = sorted(glob(os.path.join(working_dir, "SMDataset_YV8", "test", "images", "*")))
+    #Loading video
     video = os.path.join(parent_path, relative_path_video)
-    print(video)
            
     #Loading trained weights
     best_weights = os.path.join(parent_path, relative_path_model)
-    print(best_weights)
 
     #Model Instance
     model = YOLO(best_weights)
