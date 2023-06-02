@@ -10,20 +10,6 @@ import matplotlib.pyplot as plt
 
 import rclpy
 from rclpy.node import Node
-#from std_msgs.msg import String
-
-
-"""
-#Setting up working directory
-if os.path.basename(os.getcwd()) != "Ships_DetectionRT":
-    WORKING_DIR = str(Path(os.getcwd()).parent)
-    
-if os.path.exists(WORKING_DIR):
-    os.chdir(WORKING_DIR)
-    print("pwd: " + WORKING_DIR)
-else:
-    assert("Desired working directory doesn't exist")
-"""
 
        
 def main():
@@ -55,7 +41,7 @@ def main():
 
     #Model Instance
     model = YOLO(best_weights)
-    print(type(model))
+
     box_annotator = sv.BoxAnnotator(
         thickness=1,
         text_thickness=1,
@@ -63,15 +49,8 @@ def main():
         text_padding=5
     )
     
-    ##480x640
-    #frame_width = 480
-    #frame_height = 640
-    #cap = cv2.VideoCapture(video)
-    #cap.set(cv2.CAP_PROP_FRAME_WIDTH, frame_width)
-    #cap.set(cv2.CAP_PROP_FRAME_HEIGHT, frame_height)
     
-    for result in model.track(video, show=False, stream=True):
-        
+    for result in model.track(video, show=False, stream=True):        
         frame = result.orig_img
         detections = sv.Detections.from_yolov8(result)
         
@@ -114,5 +93,4 @@ if __name__ == "__main__":
     # Setting the starting path of the script
     script_path = os.path.realpath(__file__)
     os.chdir(Path(script_path).parent)
-    
-    #main()
+    main()
