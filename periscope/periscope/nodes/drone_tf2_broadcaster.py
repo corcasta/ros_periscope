@@ -60,3 +60,12 @@ class DynamicFrameBroadcaster(Node):
         #self.drone_psi   = angles[2]
 
 
+def main():
+    rclpy.init()
+    node = DynamicFrameBroadcaster()
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+
+    rclpy.shutdown()
