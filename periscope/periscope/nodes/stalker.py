@@ -39,8 +39,8 @@ class Stalker(Node):
                                                  Defaults to (1920, 1080).
         """
         super().__init__('stalker')
-        #Attributes for setting up YOLO
-        #self.__device = device #Camera ID for input
+        
+        # Attributes for setting up YOLO
         self.__base_path = os.path.abspath(os.path.dirname(__file__))
         self.__parent_path = str(Path(self.__base_path).parent)
         self.__relative_path_model = "/weights/{}".format(model)
@@ -52,7 +52,6 @@ class Stalker(Node):
                                                stream=True)
         
         
-        #self.__cap = cv2.VideoCapture(device) #Device'0' gets the default webcam.
         self.__box_annotator = sv.BoxAnnotator(thickness=1,
                                                text_thickness=1,
                                                text_scale=0.5,
@@ -61,7 +60,7 @@ class Stalker(Node):
         # Used to convert between ROS and OpenCV images
         self.br = CvBridge()
         
-        #Drone pose relative to World frame:
+        # Drone pose relative to World frame:
         self.drone_phi   = 0
         self.drone_theta = 0
         self.drone_psi   = 0
@@ -70,7 +69,7 @@ class Stalker(Node):
         self.drone_Od_z  = 0.001
 
         
-        #Camera pose relative to World frame:
+        # Camera pose relative to World frame:
         self.camera_phi   = 0
         self.camera_theta = 0
         self.camera_psi   = 0
@@ -79,11 +78,11 @@ class Stalker(Node):
         self.camera_Od_z  = 0
         
 
-        #Camera details (resolution, intrinsincs, dist coefs, etc..)
+        # Camera details (resolution, intrinsincs, dist coefs, etc..)
         self.cam_width = camera_resolution[0]
         self.cam_height = camera_resolution[1]
         
-        #The following two attributes come from the calibration script
+        # The following two attributes come from the calibration script
         self.intrinsic_matrix = pd.read_csv(str(Path(os.path.abspath(os.path.dirname(__file__))).parent) 
                                             + "/cam_details/intrinsic_matrix.txt", 
                                             delim_whitespace=True, 
@@ -132,7 +131,7 @@ class Stalker(Node):
         Returns:
             None                                     
         """
-        #print("Type: {} \t {}".format(type(msg.position), msg.position))
+        
         self.drone_Od_x = msg.pose.pose.position.x
         self.drone_Od_y = msg.pose.pose.position.y
         self.drone_Od_z = msg.pose.pose.position.z
@@ -147,9 +146,6 @@ class Stalker(Node):
         self.drone_phi   = angles[0]  
         self.drone_theta = angles[1]
         self.drone_psi   = angles[2]
-        
-        print("Position: ", [self.drone_Od_x, self.drone_Od_y, self.drone_Od_z])
-        print("Orientation: ", [self.drone_phi, self.drone_theta, self.drone_psi])
 
         #self.get_logger().info("Type: {} \t {}".format(type(msg.position), msg.position))
         
@@ -165,7 +161,6 @@ class Stalker(Node):
         Returns:
             None                            
         """        
-        #print("Type: {} \t {}".format(type(msg.pose.pose.position), msg.pose.pose.position))
         self.camera_Od_x  = msg.pose.pose.position.x
         self.camera_Od_y  = msg.pose.pose.position.y
         self.camera_Od_z  = msg.pose.pose.position.z
@@ -180,9 +175,6 @@ class Stalker(Node):
         self.camera_phi   = angles[0]
         self.camera_theta = angles[1]
         self.camera_psi   = angles[2]
-        
-        print("Position: ", [self.drone_Od_x, self.drone_Od_y, self.drone_Od_z])
-        print("Orientation: ", [self.drone_phi, self.drone_theta, self.drone_psi])
         
     
     def _denormalize(self, points):
@@ -207,7 +199,7 @@ class Stalker(Node):
                                     of detected objects in the image. 
         """
         
-        #DENORMALIZE
+        # DENORMALIZE
         # x-center-bb
         points[:, 0] = points[:, 0]*self.cam_width 
         # y-center-bb
@@ -252,7 +244,6 @@ class Stalker(Node):
         x = points[:, 0]
         y = points[:, 1]    
         
-        #x, y = points#.astype(float)
         x = (x - cx) / fx
         x0 = x
         y = (y - cy) / fy
@@ -265,10 +256,6 @@ class Stalker(Node):
             delta_y = p1 * (r2 + 2 * y**2) + 2 * p2 * x*y
             x = (x0 - delta_x) * k_inv
             y = (y0 - delta_y) * k_inv
-        
-        #print("Inside undistort: x shape: {}".format(x.shape))
-        #print("Inside undistort: y shape: {}".format(y.shape))
-        #print("DEBUG: {}".format( np.column_stack((x,y)).shape ) )
         
         points = np.column_stack((x * fx + cx, y * fy + cy))
         return points
