@@ -6,47 +6,80 @@ from tf2_ros import TransformBroadcaster
 from geometry_msgs.msg import TransformStamped, PoseWithCovarianceStamped
 
 
-class DynamicFrameBroadcaster(Node):
+class DynamicCameraFrameBroadcaster(Node):
 
     def __init__(self):
-        super().__init__('dynamic_camera_frame_tf2_broadcaster')
-        self.tf_broadcaster = TransformBroadcaster(self)
-
+        super().__init__('dynamic_camera_frame_tf2_Broadcaster')
+        
+        # Declare the transforms broadcaster
+        self._tf_broadcaster = TransformBroadcaster(self)
+        # Declare the transform to broadcast
+        self._trans = TransformStamped()
+        # Parent frame
+        self._trans.header.frame_id = 'drone'
+        # Child frame
+        self._trans.child_frame_id = 'camera'
+        self.initial_pose()
+        
+        # Initialize timer for publishing transform
+        self.timer = self.create_timer(0.1, self.publish_camera_tf2)
+                
         # Subscribe to a drone_posecov topic and call broadcast_drone_pose
         # callback function on each message
         self.subscription = self.create_subscription(PoseWithCovarianceStamped, 
                                                      'camera_posecov',
-                                                     self.broadcast_camera_pose,
+                                                     self.camera_pose_callback,
                                                      10)
         self.subscription  # prevent unused variable warning
     
-    
-    def broadcast_camera_pose(self, msg):
+    def initial_pose(self):
         """
-        Updates camera pose state.        
+            This just creates the starting point for the transforms
+        """
+        self._trans.header.stamp = self.get_clock().now().to_msg()
+        
+        self._trans.transform.translation.x = 0.0
+        self._trans.transform.translation.y = 0.0
+        self._trans.transform.translation.z = 1.0
+        
+        self._trans.transform.rotation.x = 0.0
+        self._trans.transform.rotation.y = 0.0
+        self._trans.transform.rotation.z = 0.0
+        self._trans.transform.rotation.w = 1.0
+        
+        self._tf_broadcaster.sendTransform(self._trans)
+        
+    
+    def publish_camera_tf2(self):
+        self._trans.header.stamp = self.get_clock().now().to_msg()
+        #print(self._trans)
+        self._tf_broadcaster.sendTransform(self._trans)
+        
+        
+    def camera_pose_callback(self, msg):
+        """
+        Updates drone pose state.        
 
         Args:
             msg (PoseWithCovarianceStamped): ros message of type PoseWithCovariance,
-                                             containing camera pose and cov info.
+                                             containing drone pose info.
         
         Returns:
             None                                     
         """
         
-        t = TransformStamped()
-        t.header.stamp = self.get_clock().now().to_msg()
-        t.header.frame_id = 'drone'
-        t.child_frame_id = 'camera'
+
+        print(msg)        
+        self._trans.transform.translation.x = msg.pose.pose.position.x
+        self._trans.transform.translation.y = msg.pose.pose.position.y
+        self._trans.transform.translation.z = msg.pose.pose.position.z
         
-        t.transform.translation.x = msg.pose.pose.position.x
-        t.transform.translation.y = msg.pose.pose.position.y
-        t.transform.translation.z = msg.pose.pose.position.z
-        t.transform.rotation.x = msg.pose.pose.position.x
-        t.transform.rotation.y = msg.pose.pose.position.y
-        t.transform.rotation.z = msg.pose.pose.position.z
-        t.transform.rotation.w = msg.pose.pose.position.w
+        self._trans.transform.rotation.x = msg.pose.pose.orientation.x
+        self._trans.transform.rotation.y = msg.pose.pose.orientation.y
+        self._trans.transform.rotation.z = msg.pose.pose.orientation.z
+        self._trans.transform.rotation.w = msg.pose.pose.orientation.w
         
-        self.tf_broadcaster.sendTransform(t)
+        #self.tf_broadcaster.sendTransform(t)
         
         #quaternion = [msg.pose.pose.position.x,
         #              msg.pose.pose.position.y, 
@@ -55,13 +88,14 @@ class DynamicFrameBroadcaster(Node):
         #
         #angles = tf.euler.quat2euler(quaternion, axes="sxyz")
         #
-        #self.camera_phi   = angles[0]  
-        #self.camera_theta = angles[1]
-        #self.camera_psi   = angles[2]
+        #self.drone_phi   = angles[0]  
+        #self.drone_theta = angles[1]
+        #self.drone_psi   = angles[2]
+
 
 def main():
     rclpy.init()
-    node = DynamicFrameBroadcaster()
+    node = DynamicCameraFrameBroadcaster()
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:

@@ -6,10 +6,10 @@ from tf2_ros import TransformBroadcaster
 from geometry_msgs.msg import TransformStamped, PoseWithCovarianceStamped
 
 
-class DynamicDroneFramePublisher(Node):
+class DynamicDroneFrameBroadcaster(Node):
 
     def __init__(self):
-        super().__init__('dynamic_drone_frame_tf2_publisher')
+        super().__init__('dynamic_drone_frame_tf2_Broadcaster')
         
         # Declare the transforms broadcaster
         self._tf_broadcaster = TransformBroadcaster(self)
@@ -40,7 +40,7 @@ class DynamicDroneFramePublisher(Node):
         
         self._trans.transform.translation.x = 0.0
         self._trans.transform.translation.y = 0.0
-        self._trans.transform.translation.z = 0.0
+        self._trans.transform.translation.z = 1.0
         
         self._trans.transform.rotation.x = 0.0
         self._trans.transform.rotation.y = 0.0
@@ -52,6 +52,7 @@ class DynamicDroneFramePublisher(Node):
     
     def publish_drone_tf2(self):
         self._trans.header.stamp = self.get_clock().now().to_msg()
+        #print(self._trans)
         self._tf_broadcaster.sendTransform(self._trans)
         
         
@@ -68,14 +69,15 @@ class DynamicDroneFramePublisher(Node):
         """
         
 
-        
+        print(msg)        
         self._trans.transform.translation.x = msg.pose.pose.position.x
         self._trans.transform.translation.y = msg.pose.pose.position.y
         self._trans.transform.translation.z = msg.pose.pose.position.z
-        self._trans.transform.rotation.x = msg.pose.pose.position.x
-        self._trans.transform.rotation.y = msg.pose.pose.position.y
-        self._trans.transform.rotation.z = msg.pose.pose.position.z
-        self._trans.transform.rotation.w = msg.pose.pose.position.w
+        
+        self._trans.transform.rotation.x = msg.pose.pose.orientation.x
+        self._trans.transform.rotation.y = msg.pose.pose.orientation.y
+        self._trans.transform.rotation.z = msg.pose.pose.orientation.z
+        self._trans.transform.rotation.w = msg.pose.pose.orientation.w
         
         #self.tf_broadcaster.sendTransform(t)
         
@@ -93,7 +95,7 @@ class DynamicDroneFramePublisher(Node):
 
 def main():
     rclpy.init()
-    node = DynamicDroneFramePublisher()
+    node = DynamicDroneFrameBroadcaster()
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
