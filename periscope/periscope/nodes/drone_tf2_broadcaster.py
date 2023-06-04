@@ -6,22 +6,56 @@ from tf2_ros import TransformBroadcaster
 from geometry_msgs.msg import TransformStamped, PoseWithCovarianceStamped
 
 
-class DynamicFrameBroadcaster(Node):
+class DynamicDroneFramePublisher(Node):
 
     def __init__(self):
-        super().__init__('dynamic_drone_frame_tf2_broadcaster')
-        self.tf_broadcaster = TransformBroadcaster(self)
-
+        super().__init__('dynamic_drone_frame_tf2_publisher')
+        
+        # Declare the transforms broadcaster
+        self._tf_broadcaster = TransformBroadcaster(self)
+        # Declare the transform to broadcast
+        self._trans = TransformStamped()
+        # Parent frame
+        self._trans.header.frame_id = 'world'
+        # Child frame
+        self._trans.child_frame_id = 'drone'
+        self.initial_pose()
+        
+        # Initialize timer for publishing transform
+        self.timer = self.create_timer(0.1, self.publish_drone_tf2)
+                
         # Subscribe to a drone_posecov topic and call broadcast_drone_pose
         # callback function on each message
         self.subscription = self.create_subscription(PoseWithCovarianceStamped, 
                                                      'drone_posecov',
-                                                     self.broadcast_drone_pose,
+                                                     self.drone_pose_callback,
                                                      10)
         self.subscription  # prevent unused variable warning
     
+    def initial_pose(self):
+        """
+            This just creates the starting point for the transforms
+        """
+        self._trans.header.stamp = self.get_clock().now().to_msg()
+        
+        self._trans.transform.translation.x = 0.0
+        self._trans.transform.translation.y = 0.0
+        self._trans.transform.translation.z = 0.0
+        
+        self._trans.transform.rotation.x = 0.0
+        self._trans.transform.rotation.y = 0.0
+        self._trans.transform.rotation.z = 0.0
+        self._trans.transform.rotation.w = 1.0
+        
+        self._tf_broadcaster.sendTransform(self._trans)
+        
     
-    def broadcast_drone_pose(self, msg):
+    def publish_drone_tf2(self):
+        self._trans.header.stamp = self.get_clock().now().to_msg()
+        self._tf_broadcaster.sendTransform(self._trans)
+        
+        
+    def drone_pose_callback(self, msg):
         """
         Updates drone pose state.        
 
@@ -33,20 +67,17 @@ class DynamicFrameBroadcaster(Node):
             None                                     
         """
         
-        t = TransformStamped()
-        t.header.stamp = self.get_clock().now().to_msg()
-        t.header.frame_id = 'world'
-        t.child_frame_id = 'drone'
+
         
-        t.transform.translation.x = msg.pose.pose.position.x
-        t.transform.translation.y = msg.pose.pose.position.y
-        t.transform.translation.z = msg.pose.pose.position.z
-        t.transform.rotation.x = msg.pose.pose.position.x
-        t.transform.rotation.y = msg.pose.pose.position.y
-        t.transform.rotation.z = msg.pose.pose.position.z
-        t.transform.rotation.w = msg.pose.pose.position.w
+        self._trans.transform.translation.x = msg.pose.pose.position.x
+        self._trans.transform.translation.y = msg.pose.pose.position.y
+        self._trans.transform.translation.z = msg.pose.pose.position.z
+        self._trans.transform.rotation.x = msg.pose.pose.position.x
+        self._trans.transform.rotation.y = msg.pose.pose.position.y
+        self._trans.transform.rotation.z = msg.pose.pose.position.z
+        self._trans.transform.rotation.w = msg.pose.pose.position.w
         
-        self.tf_broadcaster.sendTransform(t)
+        #self.tf_broadcaster.sendTransform(t)
         
         #quaternion = [msg.pose.pose.position.x,
         #              msg.pose.pose.position.y, 
@@ -62,7 +93,7 @@ class DynamicFrameBroadcaster(Node):
 
 def main():
     rclpy.init()
-    node = DynamicFrameBroadcaster()
+    node = DynamicDroneFramePublisher()
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
