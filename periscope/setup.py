@@ -24,7 +24,8 @@ setup(
             'stalker = periscope.nodes.stalker:main',
             'video = periscope.nodes.video_sub:main',
             'drone_tf = periscope.nodes.drone_tf2_broadcaster:main',
-            'camera_tf = periscope.nodes.camera_tf2_broadcaster:main'
+            'camera_tf = periscope.nodes.camera_tf2_broadcaster:main',
+            'sensors = periscope.nodes.px4_sensor_listener:main'
         ],
     },
 )
