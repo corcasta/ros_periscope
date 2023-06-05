@@ -4,6 +4,7 @@ import transforms3d as tf
 from rclpy.node import Node
 from tf2_ros import TransformBroadcaster
 from geometry_msgs.msg import TransformStamped, PoseWithCovarianceStamped
+from tf2_geometry_msgs import do_transform_pose_with_covariance_stamped
 
 
 class DynamicDroneFrameBroadcaster(Node):
@@ -36,6 +37,7 @@ class DynamicDroneFrameBroadcaster(Node):
         """
             This just creates the starting point for the transforms
         """
+        print(do_transform_pose_with_covariance_stamped.__doc__)
         self._trans.header.stamp = self.get_clock().now().to_msg()
         
         self._trans.transform.translation.x = 0.0
