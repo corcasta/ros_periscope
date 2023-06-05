@@ -1,8 +1,10 @@
 import rclpy
-from rclpy.qos import qos_profile_sensor_data
+import numpy as np
+import transforms3d as tf
 from rclpy.node import Node
-from px4_msgs.msg import SensorCombined
-
+from px4_msgs.msg import SensorCombined, VehicleOdometry
+from rclpy.qos import qos_profile_sensor_data
+#import px4_ros_com.src.lib
 
 class SensorCombinedListener(Node):
     """
@@ -10,22 +12,61 @@ class SensorCombinedListener(Node):
     """
     def __init__(self):
         super().__init__("px4_sensors")
-
-        print(type(qos_profile_sensor_data))
-        self.subscription = self.create_subscription(SensorCombined,
-                                                     "/fmu/out/sensor_combined",
+        
+        self.subscription = self.create_subscription(VehicleOdometry, #SensorCombined,
+                                                     "/fmu/out/vehicle_odometry",#"/fmu/out/sensor_combined",
                                                      self.demo_callback,
                                                      qos_profile_sensor_data)
           
+    
+    def __qned2enu(self, q_ned):
+        # first a pi/2 rotation around the Z-axis (down)
+        qz = tf.quaternions.axangle2quat([0,0,1], np.pi/2)
+        # then a pi rotation around the X-axis (old North/new East)
+        qx = tf.quaternions.axangle2quat([1,0,0], np.pi)
+        
+        q = tf.quaternions.qmult(qx, qz)
+        #print("DEBUG: ", q)
+        #q_enu = tf.quaternions.qmult(q, q_ned)
+        q_enu = tf.quaternions.qmult(q, q_ned)
+        
+        return q_enu
+    
+    def __qenu2ned(self, q_enu):
+        # first a pi/2 rotation around the Z-axis (down)
+        qz = tf.quaternions.axangle2quat([0,0,1], np.pi/2)
+        # then a pi rotation around the X-axis (old North/new East)
+        qx = tf.quaternions.axangle2quat([1,0,0], np.pi)
+        
+        q = tf.quaternions.qmult(qx, qz)
+        #print("DEBUG: ", q)
+        #q_enu = tf.quaternions.qmult(q, q_ned)
+        q_ned = tf.quaternions.qmult(q, q_enu)
+
+        return q_ned
+    
     def demo_callback(self, msg):
+        q_enu = self.__qned2enu(msg.q)
+        position_enu = tf.quaternions.rotate_vector(msg.position, q_enu)
+        
+        
         print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
         print("RECEIVED SENSOR COMBINED DATA")
         print("=============================")
-        print("ts: ", msg.timestamp )
-        print("gyro_rad[0]: ", msg.gyro_rad[0])
-        print("gyro_rad[1]: ", msg.gyro_rad[1])
-        print("gyro_rad[2]: ", msg.gyro_rad[2])
-  
+        #print("ts: ", msg.timestamp )
+        #print("gyro_rad[0]: ", msg.gyro_rad[0])
+        #print("gyro_rad[1]: ", msg.gyro_rad[1])
+        #print("gyro_rad[2]: ", msg.gyro_rad[2])
+        
+        print("ENU Position: ", position_enu)
+        print("ENU q: ", q_enu)
+        
+        q_ned = self.__qenu2ned(q_enu)
+        position_ned = tf.quaternions.rotate_vector(position_enu, q_ned)
+        print("NED Position: ", position_ned)
+        print("NED q: ", q_ned)
+        
+        
    
 def main():
     rclpy.init()
