@@ -42,7 +42,7 @@ class DynamicDroneFrameBroadcaster(Node):
         
         self._trans.transform.translation.x = 0.0
         self._trans.transform.translation.y = 0.0
-        self._trans.transform.translation.z = 1.0
+        self._trans.transform.translation.z = 0.0
         
         self._trans.transform.rotation.x = 0.0
         self._trans.transform.rotation.y = 0.0

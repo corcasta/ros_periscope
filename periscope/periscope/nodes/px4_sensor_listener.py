@@ -28,35 +28,33 @@ class SensorCombinedListener(Node):
         
         
     def __qned2enu(self, q_ned):
-        # first a pi/2 rotation around the Z-axis (down)
-        qz = tf.quaternions.axangle2quat([0,0,1], np.pi/2)
-        # then a pi rotation around the X-axis (old North/new East)
-        qx = tf.quaternions.axangle2quat([1,0,0], np.pi)
         
-        q = tf.quaternions.qmult(qx, qz)
-        #print("DEBUG: ", q)
-        #q_enu = tf.quaternions.qmult(q, q_ned)
-        q_enu = tf.quaternions.qmult(q, q_ned)
+        # Quaternion: [w, x, y, z]
+        q_ned = [q_ned[-1], q_ned[0], q_ned[1], q_ned[2]]
+        # Quaternion: [w, x, y, z]
+        q = [0, np.sqrt(2)/2, np.sqrt(2)/2, 0]
         
+        q_enu = tf.quaternions.qmult(q_ned, q)
+        
+        # Quaternion: [x, y, z, w]
+        q_enu = [q_enu[-1], q_enu[0], q_enu[1], q_enu[2]]
         return q_enu
     
     def __qenu2ned(self, q_enu):
-        # first a pi/2 rotation around the Z-axis (down)
-        qz = tf.quaternions.axangle2quat([0,0,1], np.pi/2)
-        # then a pi rotation around the X-axis (old North/new East)
-        qx = tf.quaternions.axangle2quat([1,0,0], np.pi)
+                
+        # Quaternion: [w, x, y, z]
+        q_enu = [q_enu[-1], q_enu[0], q_enu[1], q_enu[2]]
         
-        q = tf.quaternions.qmult(qx, qz)
-        #print("DEBUG: ", q)
-        #q_enu = tf.quaternions.qmult(q, q_ned)
-        q_ned = tf.quaternions.qmult(q, q_enu)
-
+        # Quaternion: [w, x, y, z]
+        q = [0, np.sqrt(2)/2, np.sqrt(2)/2, 0]
+        
+        q_ned = tf.quaternions.qmult(q_enu, q)
+        
+        # Quaternion: [x, y, z, w]
+        q_ned = [q_ned[-1], q_ned[0], q_ned[1], q_ned[2]]
         return q_ned
     
     def demo_callback(self, msg):
-        q_enu = self.__qned2enu(msg.q)
-        position_enu = tf.quaternions.rotate_vector(msg.position, q_enu)
-        
         
         print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
         print("RECEIVED SENSOR COMBINED DATA")
@@ -66,25 +64,29 @@ class SensorCombinedListener(Node):
         #print("gyro_rad[1]: ", msg.gyro_rad[1])
         #print("gyro_rad[2]: ", msg.gyro_rad[2])
         
+        q_enu = self.__qned2enu(msg.q)
+        q_ned = self.__qenu2ned(q_enu)
+        
+        position_enu = tf.quaternions.rotate_vector(msg.position, [0, np.sqrt(2)/2, np.sqrt(2)/2, 0])
         print("ENU Position: ", position_enu)
         print("ENU q: ", q_enu)
         
-        q_ned = self.__qenu2ned(q_enu)
-        position_ned = tf.quaternions.rotate_vector(position_enu, q_ned)
+        
+        position_ned = tf.quaternions.rotate_vector(position_enu, [0, np.sqrt(2)/2, np.sqrt(2)/2, 0])
         print("NED Position: ", position_ned)
         print("NED q: ", q_ned)
         
         
         
-        self.pwcs.pose.pose.position.x = msg.position[0]
-        self.pwcs.pose.pose.position.y = msg.position[1]
-        self.pwcs.pose.pose.position.z = msg.position[2]
+        self.pwcs.pose.pose.position.x = float(position_enu[0])
+        self.pwcs.pose.pose.position.y = float(position_enu[1])
+        self.pwcs.pose.pose.position.z = float(position_enu[2])
         
         
-        self.pwcs.pose.pose.orientation.x = msg.q[0]
-        self.pwcs.pose.pose.orientation.y = msg.q[1] 
-        self.pwcs.pose.pose.orientation.z = msg.q[2]
-        self.pwcs.pose.pose.orientation.w = msg.q[3]
+        self.pwcs.pose.pose.orientation.x = float(q_enu[0])
+        self.pwcs.pose.pose.orientation.y = float(q_enu[1]) 
+        self.pwcs.pose.pose.orientation.z = float(q_enu[2])
+        self.pwcs.pose.pose.orientation.w = float(q_enu[3])
         
         self.publisher.publish(self.pwcs)
         
