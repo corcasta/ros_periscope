@@ -17,9 +17,9 @@ class DynamicDroneFrameBroadcaster(Node):
         # Declare the transform to broadcast
         self._trans = TransformStamped()
         # Parent frame
-        self._trans.header.frame_id = 'world'
+        self._trans.header.frame_id = 'odom'
         # Child frame
-        self._trans.child_frame_id = 'drone'
+        self._trans.child_frame_id = 'base_link'
         self.initial_pose()
         
         # Initialize timer for publishing transform
