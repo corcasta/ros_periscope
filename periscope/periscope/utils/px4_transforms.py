@@ -25,29 +25,29 @@ def transform_orientation(q, transformation):
         np.array: Transformed quaternion [x, y, z, w]. Shape (,4)
     """
 
-        # Quaternion: [w, x, y, z] 
-        q = np.array([q[-1], q[0], q[1], q[2]])
-        
-        match transformation:
-            case "FRD_2_FLU":
-                # Quaternion: [w, x, y, z]
-                q_out = tf.quaternions.qmult(Q_FRD_FLU, q)
-                
-            case "FLU_2_FRD":
-                # Quaternion: [w, x, y, z]
-                q_out = tf.quaternions.qmult(Q_FLU_FRD, q)
-                
-            case "NED_2_ENU":
-                # Quaternion: [w, x, y, z] 
-                q_out = tf.quaternions.qmult(q, Q_NED_ENU)
-                
-            case "ENU_2_NED":
-                # Quaternion: [w, x, y, z] 
-                q_out = tf.quaternions.qmult(q, Q_ENU_NED)
-                
-        # Quaternion: [x, y, z, w] 
-        q_out = [q_out[1], q_out[2], q_out[3], q_out[0]]    
-        return q_out
+    # Quaternion: [w, x, y, z] 
+    q = np.array([q[-1], q[0], q[1], q[2]])
+    
+    match transformation:
+        case "FRD_2_FLU":
+            # Quaternion: [w, x, y, z]
+            q_out = tf.quaternions.qmult(Q_FRD_FLU, q)
+            
+        case "FLU_2_FRD":
+            # Quaternion: [w, x, y, z]
+            q_out = tf.quaternions.qmult(Q_FLU_FRD, q)
+            
+        case "NED_2_ENU":
+            # Quaternion: [w, x, y, z] 
+            q_out = tf.quaternions.qmult(q, Q_NED_ENU)
+            
+        case "ENU_2_NED":
+            # Quaternion: [w, x, y, z] 
+            q_out = tf.quaternions.qmult(q, Q_ENU_NED)
+            
+    # Quaternion: [x, y, z, w] 
+    q_out = [q_out[1], q_out[2], q_out[3], q_out[0]]    
+    return q_out
     
     
 def transform_position(vector, transformation):
