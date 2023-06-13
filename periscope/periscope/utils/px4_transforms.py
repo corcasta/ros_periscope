@@ -1,6 +1,6 @@
 import numpy as np
 import transforms3d as tf
-from .constants import * #import Q_ENU_NED, Q_NED_ENU, Q_FRD_FLU, Q_FLU_FRD 
+from .constants import *
 
 
 def transform_orientation(q, transformation):
@@ -9,7 +9,7 @@ def transform_orientation(q, transformation):
     
     Args:
             q (list, np.array): List/Array of size 4 (the elements of the quaternion must 
-                                follow this order [x, y, z, w]).
+                                follow this order [w, x, y, z).
                                 Shape: (4,1), (1,4), (4,), (,4).
                                   
             transformation (str): Choose one of the body or world transformations available.
@@ -22,31 +22,26 @@ def transform_orientation(q, transformation):
                                       ENU_2_NED
     
     Returns:
-        np.array: Transformed quaternion [x, y, z, w]. Shape (,4)
+        np.array: Transformed quaternion [w, x, y, z,]. Shape (,4)
     """
-
-    # Quaternion: [w, x, y, z] 
-    q = np.array([q[-1], q[0], q[1], q[2]])
-    
+   
     match transformation:
         case "FRD_2_FLU":
             # Quaternion: [w, x, y, z]
-            q_out = tf.quaternions.qmult(Q_FRD_FLU, q)
+            q_out = tf.quaternions.qmult(q, Q_FRD_FLU)
             
         case "FLU_2_FRD":
             # Quaternion: [w, x, y, z]
-            q_out = tf.quaternions.qmult(Q_FLU_FRD, q)
+            q_out = tf.quaternions.qmult(q, Q_FLU_FRD)
             
         case "NED_2_ENU":
-            # Quaternion: [w, x, y, z] 
-            q_out = tf.quaternions.qmult(q, Q_NED_ENU)
+            # Quaternion: [w, x, y, z]
+            q_out = tf.quaternions.qmult(Q_NED_ENU, q)
             
         case "ENU_2_NED":
-            # Quaternion: [w, x, y, z] 
-            q_out = tf.quaternions.qmult(q, Q_ENU_NED)
-            
-    # Quaternion: [x, y, z, w] 
-    q_out = [q_out[1], q_out[2], q_out[3], q_out[0]]    
+            # Quaternion: [w, x, y, z]
+            q_out = tf.quaternions.qmult(Q_ENU_NED, q)
+           
     return q_out
     
     
@@ -68,7 +63,7 @@ def transform_position(vector, transformation):
                                       ENU_2_NED
     
     Returns:
-        np.array: Transformed vector. Shape (,3)
+        np.array: Transformed vector [x, y, z]. Shape (,3)
     """
 
     match transformation:
@@ -160,4 +155,46 @@ def transform_cov6d(cov, transformation):
             
     return cov_out     
 
+def qinverse(q):
+    q_inv = tf.quaternions.qinverse(q)
+    return q_inv
 
+
+def px4_to_ros_orientation(q):
+    """
+    Transforms quaternion provided from PX4 convention to ROS convention.
+    (The FRD (NED) conventions are adopted on all PX4 topics unless explicitly 
+    specified in the associated message definition. ROS follows the FLU (ENU) 
+    convention) 
+
+    Args:
+        q (np.array, list): Quaternion provided from any PX4 topic following 
+                            FRD (NED) conventions. 
+                            Order: [w, x, y, z]
+
+    Returns:
+        np.array: Quaternion from FLU to ENU.
+                  Order: [w, x, y, z]
+    """
+    
+    q_out = transform_orientation(transform_orientation(q, "ENU_2_NED"), "FRD_2_FLU")
+    return q_out
+
+def ros_to_px4_orientation(q):
+     """
+    Transforms quaternion from ROS convention to PX4.
+    (The FRD (NED) conventions are adopted on all PX4 topics unless explicitly 
+    specified in the associated message definition. ROS follows the FLU (ENU) 
+    convention)
+
+    Args:
+        q (np.array, list): Quaternion provided from ROS FLU (ENU) conventions. 
+                            Order: [w, x, y, z]
+
+    Returns:
+        np.array: Quaternion from FRD to NED.
+                  Order: [w, x, y, z]
+    """
+    
+    q_out = transform_orientation(transform_orientation(q, "NED_2_ENU"), "FLU_2_FRD")
+    return q_out

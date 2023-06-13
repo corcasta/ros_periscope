@@ -16,7 +16,7 @@ class DynamicCameraFrameBroadcaster(Node):
         # Declare the transform to broadcast
         self._trans = TransformStamped()
         # Parent frame
-        self._trans.header.frame_id = 'base_link'
+        self._trans.header.frame_id = 'drone'
         # Child frame
         self._trans.child_frame_id = 'camera'
         self.initial_pose()
