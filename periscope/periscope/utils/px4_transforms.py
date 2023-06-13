@@ -181,7 +181,7 @@ def px4_to_ros_orientation(q):
     return q_out
 
 def ros_to_px4_orientation(q):
-     """
+    """
     Transforms quaternion from ROS convention to PX4.
     (The FRD (NED) conventions are adopted on all PX4 topics unless explicitly 
     specified in the associated message definition. ROS follows the FLU (ENU) 
