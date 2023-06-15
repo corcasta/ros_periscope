@@ -119,7 +119,7 @@ def transform_cov3d(cov, transformation):
     return cov_out     
 
 
-def transform_cov6d(cov, transformation):    
+def transform_cov6d(cov, transformation):
     """
     Transforms a 6D covariance matrix from base frame to target frame. 
     
@@ -139,7 +139,6 @@ def transform_cov6d(cov, transformation):
         np.array: Transformed covariance 6D (6x6).
     """
     
-    
     match transformation:
         case "FRD_2_FLU":
             cov_out = R_FRD_FLU_6 @ cov @ R_FRD_FLU_6.T
@@ -154,6 +153,7 @@ def transform_cov6d(cov, transformation):
             cov_out = R_ENU_NED_6 @ cov @ R_ENU_NED_6.T
             
     return cov_out     
+
 
 def qinverse(q):
     q_inv = tf.quaternions.qinverse(q)
@@ -179,6 +179,7 @@ def px4_to_ros_orientation(q):
     
     q_out = transform_orientation(transform_orientation(q, "ENU_2_NED"), "FRD_2_FLU")
     return q_out
+
 
 def ros_to_px4_orientation(q):
     """
