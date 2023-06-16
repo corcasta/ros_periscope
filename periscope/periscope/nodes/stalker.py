@@ -19,6 +19,9 @@ import transforms3d as tf
 from sensor_msgs.msg import Image # Image is the message type
 from cv_bridge import CvBridge # Package to convert between ROS and OpenCV Images
 
+from tf2_ros import TransformException
+from tf2_ros.buffer import Buffer
+from tf2_ros.transform_listener import TransformListener 
 
 
 
@@ -58,25 +61,19 @@ class Stalker(Node):
                                                text_padding=5)
               
         # Used to convert between ROS and OpenCV images
-        self.br = CvBridge()
+        self.__br = CvBridge()
+        self.__tf_buffer = Buffer()
+        self.__tf_listener = TransformListener(self.__tf_buffer, self)
         
-        # Drone pose relative to World frame:
-        self.drone_phi   = 0
-        self.drone_theta = 0
-        self.drone_psi   = 0
-        self.drone_Od_x  = 0
-        self.drone_Od_y  = 0
-        self.drone_Od_z  = 0.001
-
         
-        # Camera pose relative to World frame:
-        self.camera_phi   = 0
-        self.camera_theta = 0
-        self.camera_psi   = 0
-        self.camera_Od_x  = 0
-        self.camera_Od_y  = 0
-        self.camera_Od_z  = 0
+        # Rotation matrix of camera frame wrt world/odom frame
+        self.R_wc = 0
         
+        # Position of camera frame wrt world/odom frame
+        self.O_wc = 0
+        
+        # Message instance used to send all vessels locations.
+        self.__msg = PolarPoints()
 
         # Camera details (resolution, intrinsincs, dist coefs, etc..)
         self.cam_width = camera_resolution[0]
@@ -99,15 +96,15 @@ class Stalker(Node):
                                              header=None).to_numpy()
         
         
-        # ROS components for communication
-        self._drone_pose = self.create_subscription(PoseWithCovarianceStamped, 
-                                                    'drone_posecov', 
-                                                    self.__update_drone_pose, 
-                                                    10)
-        self._camera_pose_cov = self.create_subscription(PoseWithCovarianceStamped, 
-                                                         'camera_posecov', 
-                                                         self.__update_camera_pose, 
-                                                         10)
+        ## ROS components for communication
+        #self._drone_pose = self.create_subscription(PoseWithCovarianceStamped, 
+        #                                            'drone_posecov', 
+        #                                            self.__update_drone_pose, 
+        #                                            10)
+        #self._camera_pose_cov = self.create_subscription(PoseWithCovarianceStamped, 
+        #                                                 'camera_posecov', 
+        #                                                 self.__update_camera_pose, 
+        #                                                 10)
         self._polar_points_publisher = self.create_publisher(PolarPoints, 
                                                              'boats_location', 
                                                              10) 
@@ -118,64 +115,6 @@ class Stalker(Node):
         # Create the timer
         self.timer = self.create_timer(0.01, self.stalking_callback)
           
-    
-    
-    def __update_drone_pose(self, msg):
-        """
-        Updates drone pose state.        
-
-        Args:
-            msg (PoseWithCovarianceStamped): ros message of type PoseWithCovariance,
-                                             containing drone pose info.
-        
-        Returns:
-            None                                     
-        """
-        
-        self.drone_Od_x = msg.pose.pose.position.x
-        self.drone_Od_y = msg.pose.pose.position.y
-        self.drone_Od_z = msg.pose.pose.position.z
-        
-        quaternion = [msg.pose.pose.position.x,
-                      msg.pose.pose.position.y, 
-                      msg.pose.pose.position.z, 
-                      msg.pose.pose.position.w]
-        
-        angles = tf.euler.quat2euler(quaternion, axes="sxyz")
-        
-        self.drone_phi   = angles[0]  
-        self.drone_theta = angles[1]
-        self.drone_psi   = angles[2]
-
-        #self.get_logger().info("Type: {} \t {}".format(type(msg.position), msg.position))
-        
-    
-    def __update_camera_pose(self, msg):
-        """
-        Updates camera pose state.        
-
-        Args:
-            msg (PoseWithCovarianceStamped): ros message of type PoseWithCovariance,
-                                             containing camera pose info.
-        
-        Returns:
-            None                            
-        """        
-        self.camera_Od_x  = msg.pose.pose.position.x
-        self.camera_Od_y  = msg.pose.pose.position.y
-        self.camera_Od_z  = msg.pose.pose.position.z
-        
-        quaternion = [msg.pose.pose.orientation.x,
-                      msg.pose.pose.orientation.y,
-                      msg.pose.pose.orientation.z,
-                      msg.pose.pose.orientation.w]
-        
-        angles = tf.euler.quat2euler(quaternion, axes="sxyz")
-        
-        self.camera_phi   = angles[0]
-        self.camera_theta = angles[1]
-        self.camera_psi   = angles[2]
-        
     
     def _denormalize(self, points):
         """
@@ -315,7 +254,7 @@ class Stalker(Node):
 
         Args:
             points (numpy.ndarray): Array of shape (N, 2).
-                                    Array of normalized pixel coords (x, y) 
+                                     Array of normalized pixel coords (x, y) 
                                     of detected objects in the image. 
         
         Returns:
@@ -334,80 +273,57 @@ class Stalker(Node):
         #   columns: represents individual points   
         points = points.transpose()
 
-        #Drone pose relative to World frame:
-        #phi   = 0
-        #theta = 0
-        #psi   = 0
-        #Od_x  = 0
-        #Od_y  = 0
-        #Od_z  = 0.235
-        
-        rot_x = np.asarray([[1,                      0,                       0],
-                            [0, np.cos(self.drone_phi), -np.sin(self.drone_phi)],
-                            [0, np.sin(self.drone_phi),  np.cos(self.drone_phi)]])
-        
-        rot_y = np.asarray([[np.cos(self.drone_theta),  0, np.sin(self.drone_theta)],
-                            [0,                         1,                        0],
-                            [-np.sin(self.drone_theta), 0, np.cos(self.drone_theta)]])
-        
-        rot_z = np.asarray([[np.cos(self.drone_psi), -np.sin(self.drone_psi), 0],
-                            [np.sin(self.drone_psi),  np.cos(self.drone_psi), 0],
-                            [0,                                            0, 1]])
-        
-        rot_wd = rot_x @ rot_y @ rot_z
-        t_wd = np.vstack((rot_wd, [0,0,0]))
-        t_wd = np.hstack((t_wd, [[self.drone_Od_x ], [self.drone_Od_y], [self.drone_Od_z], [1]]))
-        
-        
-        #Camera pose relative to Drone frame:
-        #For the moment we are just assuming that the camera is fixed
-        #to the drone's movement. Later we will need to provide the gimball
-        #orientation to have the correct matrix for the camera relative to 
-        #the drone.
-        t_dc = np.asarray([[1,  0, 0, 0],
-                           [0,  0, 1, 0],
-                           [0, -1, 0, 0],
-                           [0,  0, 0, 1]])
-        
-        #Camera pose relative to World frame:
-        t_wc = t_wd@t_dc
-                
         #Localize point in World Coords
         #Transform Point to a Homogeneous Point
         points = np.vstack((points, np.ones((1, len(points[0,:])))))
         
         A_ckpx = np.linalg.inv(self.intrinsic_matrix) @ points 
-        R_wc = t_wc[0:3, 0:3]
-        O_wc = t_wc[0:3, 3][:, np.newaxis]
+        #R_wc = t_wc[0:3, 0:3]
+        #O_wc = t_wc[0:3, 3][:, np.newaxis]
         Z = np.asarray([[0],[0],[1]])
 
         #Point K with respect to World Frame
-        A_wk = O_wc + (-O_wc[2,:]/(np.dot(R_wc, A_ckpx)[2,:]))*np.dot(R_wc, A_ckpx)
+        A_wk = self.O_wc + (-self.O_wc[2,:]/(np.dot(self.R_wc, A_ckpx)[2,:]))*np.dot(self.R_wc, A_ckpx)
         
         # This last transformation is just to have the points
         # in a format where each row represents a unique point
         # instead of the mathematical matrix representation
         # where each column represents a unique point.
-        #A_wk = np.transpose(A_wk)
         A_wk = A_wk.transpose()
         
         #Point K with respect to World Frame in Polar coords
         A_wk_polar = self._cart2pol(A_wk)
-        
-        #DEBUG
-        #print("Before: Cart-Pixel_Coords: \n{}".format(A_wk))
-        #print("During: Polar-Pixel_Coords: \n{}".format(A_wk_polar))
-        #A_wk_cart = self._pol2cart(A_wk_polar)
-        #print("After: Cart-Pixel_Coords: \n{}".format(A_wk_cart ))
-        
+
         return A_wk_polar
 
     def stalking_callback(self):
         """
         Main loop of the ros node (stalker) 
         """
-        msg = PolarPoints()
+        
+        # Updates current pose of camera frame with respect to world/odom frame
+        try:
+            t = self.__tf_buffer.lookup_transform(
+                "odom",
+                "camera",
+                rclpy.time.Time())
+        except TransformException as ex:
+            self.get_logger().info(
+                f'Could not transform {"camera"} to {"odom"}: {ex}')
+            return
+        
+        self.R_wc = tf.quaternions.quat2mat([t.transform.rotation.w,
+                                             t.transform.rotation.x,
+                                             t.transform.rotation.y,
+                                             t.transform.rotation.z,])     
+           
+        self.O_wc = np.array([t.transform.translation.x, 
+                              t.transform.translation.y, 
+                              t.transform.translation.z]).reshape((3,1))
+        
+        self.get_logger().info('Camera position: {}'.format(self.O_wc))
 
+        # Process the current video frame to localize vessels
         for result in self.__tracker:
             frame = result.orig_img
             detections = sv.Detections.from_yolov8(result)
@@ -420,9 +336,9 @@ class Stalker(Node):
             # If objects exist publish locations
             if boats.size != 0:
                 polar_points_world = self.localize(boats)
-                msg.phi = list(polar_points_world[:, 0])
-                msg.rho = list(polar_points_world[:, 1])
-                self._polar_points_publisher.publish(msg)
+                self.__msg.phi = list(polar_points_world[:, 0])
+                self.__msg.rho = list(polar_points_world[:, 1])
+                self._polar_points_publisher.publish(self.__msg)
                     
                 if result.boxes.id is not None:
                     detections.tracker_id = result.boxes.id.cpu().numpy().astype(int) 
@@ -434,13 +350,13 @@ class Stalker(Node):
                 ]
                 
                 frame = self.__box_annotator.annotate(scene=frame, detections=detections, labels=labels)
-            self._video_frames_publisher.publish(self.br.cv2_to_imgmsg(frame))
+            self._video_frames_publisher.publish(self.__br.cv2_to_imgmsg(frame))
             break
             
     
 def main(args=None):
     rclpy.init(args=args) 
-    stalker_node = Stalker(device=2, classes=[32, 49])
+    stalker_node = Stalker(device=0, classes=[32, 49])
     rclpy.spin(stalker_node)
     stalker_node.destroy_node()
     rclpy.shutdown()

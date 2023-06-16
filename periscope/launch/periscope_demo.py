@@ -18,8 +18,8 @@ def generate_launch_description():
         Node(
             package='periscope',
             namespace='',
-            executable='stalker2',
-            name='stalker2'
+            executable='stalker',
+            name='stalker'
         ),
         Node(
             package='periscope',
