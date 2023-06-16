@@ -6,8 +6,14 @@ def generate_launch_description():
         Node(
             package='periscope',
             namespace='',
-            executable='camera_tf',
-            name='camera_tf'
+            executable='camera_controller',
+            name='camera_controller'
+        ),
+        Node(
+            package='periscope',
+            namespace='',
+            executable='camera_orientation',
+            name='camera_orientation'
         ),
         Node(
             package='periscope',

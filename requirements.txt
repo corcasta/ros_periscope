@@ -1,3 +1,7 @@
+# python module implemenation of siyi_sdk.
+# import as "siyi_sdk"
+git+https://github.com/aimas-lund/siyi_sdk_ros2_submodule@controller
+
 imutils==0.5.4
 matplotlib==3.7.1
 numpy==1.24.3
@@ -9,3 +13,4 @@ supervision==0.6.0
 torch==2.0.0
 transforms3d==0.4.1
 ultralytics==8.0.46
+

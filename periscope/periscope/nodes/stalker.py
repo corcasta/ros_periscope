@@ -321,7 +321,7 @@ class Stalker(Node):
                               t.transform.translation.y, 
                               t.transform.translation.z]).reshape((3,1))
         
-        self.get_logger().info('Camera position: {}'.format(self.O_wc))
+        #self.get_logger().info('Camera position: {}'.format(self.O_wc))
 
         # Process the current video frame to localize vessels
         for result in self.__tracker:
