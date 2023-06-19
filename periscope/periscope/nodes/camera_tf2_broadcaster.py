@@ -66,7 +66,7 @@ class DynamicCameraPoseBroadcaster(Node):
             None
             
         """
-        self.get_logger().info('Camera orientation: {}'.format(msg.vector))
+        #self.get_logger().info('Camera orientation: {}'.format(msg.vector))
         q = tf.euler.euler2quat(msg.vector.x, msg.vector.y, msg.vector.z, 'rxyz')
         #self.get_logger().info('Camera q: {}'.format(q))
         self.__trans.transform.rotation.w = self.__pwcs.pose.pose.orientation.w = float(q[0])
@@ -82,7 +82,7 @@ class DynamicCameraPoseBroadcaster(Node):
 
 def main():
     rclpy.init()
-    node = DynamicCameraPoseBroadcaster(x=0, y=0, z=1)
+    node = DynamicCameraPoseBroadcaster(x=0, y=0, z=0)
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:

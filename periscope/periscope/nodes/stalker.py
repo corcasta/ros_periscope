@@ -14,6 +14,7 @@ from ultralytics import YOLO
 import matplotlib.pyplot as plt
 from periscope_msgs.msg import PolarPoints
 from geometry_msgs.msg import PoseWithCovarianceStamped
+from example_interfaces.msg import Float32
 import transforms3d as tf
 
 from sensor_msgs.msg import Image # Image is the message type
@@ -48,7 +49,7 @@ class Stalker(Node):
         self.__parent_path = str(Path(self.__base_path).parent)
         self.__relative_path_model = "/weights/{}".format(model)
         self.__detector = YOLO(self.__parent_path  + self.__relative_path_model)
-        self.__tracker = self.__detector.track(device, 
+        self.__tracker = self.__detector.track(source="rtsp://192.168.144.25:8554/main.264",#device, 
                                                classes=classes,
                                                conf=0.3, 
                                                show=False,
@@ -81,7 +82,7 @@ class Stalker(Node):
         
         # The following two attributes come from the calibration script
         self.intrinsic_matrix = pd.read_csv(str(Path(os.path.abspath(os.path.dirname(__file__))).parent) 
-                                            + "/cam_details/intrinsic_matrix.txt", 
+                                            + "/cam_details/1x/intrinsic_matrix.txt", 
                                             delim_whitespace=True, 
                                             header=None).to_numpy()
         
@@ -91,7 +92,7 @@ class Stalker(Node):
         #                                     header=None).to_numpy()
         
         self.dist_coefficients = pd.read_csv(str(Path(os.path.abspath(os.path.dirname(__file__))).parent) 
-                                             + "/cam_details/dist_coefficients.txt", 
+                                             + "/cam_details/1x/dist_coefficients.txt", 
                                              delim_whitespace=True, 
                                              header=None).to_numpy()
         
@@ -105,6 +106,12 @@ class Stalker(Node):
         #                                                 'camera_posecov', 
         #                                                 self.__update_camera_pose, 
         #                                                 10)
+        
+        self.zoom_level = self.create_subscription(Float32, 
+                                                   'ZR30/get_zoom_level', 
+                                                   self.__update_camera_details, 
+                                                   10)
+        
         self._polar_points_publisher = self.create_publisher(PolarPoints, 
                                                              'boats_location', 
                                                              10) 
@@ -115,6 +122,32 @@ class Stalker(Node):
         # Create the timer
         self.timer = self.create_timer(0.01, self.stalking_callback)
           
+    def __update_camera_details(self, msg):
+        """
+        Updates values representing the intrinsic matrix and the dist
+        coefficients corresponding the lense being used.
+
+        Args:
+            msg (Float32): Zoom level used by the camera
+            
+        Returns:
+            None
+        """
+        # The following two attributes come from the calibration script
+        self.intrinsic_matrix = pd.read_csv(str(Path(os.path.abspath(os.path.dirname(__file__))).parent) 
+                                            + "/cam_details/{}x/intrinsic_matrix.txt".format(int(msg)), 
+                                            delim_whitespace=True, 
+                                            header=None).to_numpy()
+        
+        #self.intrinsic_newmatrix = pd.read_csv(str(Path(os.path.abspath(os.path.dirname(__file__))).parent) 
+        #                                     + "/cam_details/newcam_intrinsics.txt", 
+        #                                     delim_whitespace=True, 
+        #                                     header=None).to_numpy()
+        
+        self.dist_coefficients = pd.read_csv(str(Path(os.path.abspath(os.path.dirname(__file__))).parent) 
+                                             + "/cam_details/{}x/dist_coefficients.txt".format(int(msg)), 
+                                             delim_whitespace=True, 
+                                             header=None).to_numpy() 
     
     def _denormalize(self, points):
         """
@@ -290,6 +323,7 @@ class Stalker(Node):
         # instead of the mathematical matrix representation
         # where each column represents a unique point.
         A_wk = A_wk.transpose()
+        self.get_logger().info('Target coords: \n{}'.format(A_wk))
         
         #Point K with respect to World Frame in Polar coords
         A_wk_polar = self._cart2pol(A_wk)
