@@ -6,8 +6,14 @@ def generate_launch_description():
         Node(
             package='periscope',
             namespace='',
-            executable='camera_controller',
-            name='camera_controller'
+            executable='drone_odometry',
+            name='drone_odometry'
+        ),
+        Node(
+            package='periscope',
+            namespace='',
+            executable='gimbal_orientation',
+            name='gimbal_orientation'
         ),
         Node(
             package='periscope',
@@ -18,8 +24,8 @@ def generate_launch_description():
         Node(
             package='periscope',
             namespace='',
-            executable='drone_odometry',
-            name='drone_odometry'
+            executable='camera_controller',
+            name='camera_controller'
         ),
         Node(
             package='periscope',

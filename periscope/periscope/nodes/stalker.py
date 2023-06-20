@@ -14,7 +14,7 @@ from ultralytics import YOLO
 import matplotlib.pyplot as plt
 from periscope_msgs.msg import PolarPoints
 from geometry_msgs.msg import PoseWithCovarianceStamped
-from example_interfaces.msg import Float32
+from std_msgs.msg import Float32
 import transforms3d as tf
 
 from sensor_msgs.msg import Image # Image is the message type
@@ -49,7 +49,8 @@ class Stalker(Node):
         self.__parent_path = str(Path(self.__base_path).parent)
         self.__relative_path_model = "/weights/{}".format(model)
         self.__detector = YOLO(self.__parent_path  + self.__relative_path_model)
-        self.__tracker = self.__detector.track(source="rtsp://192.168.144.25:8554/main.264",#device, 
+        self.__tracker = self.__detector.track(#source="rtsp://192.168.144.25:8554/main.264",#
+                                               source=device, 
                                                classes=classes,
                                                conf=0.3, 
                                                show=False,
@@ -133,21 +134,22 @@ class Stalker(Node):
         Returns:
             None
         """
-        # The following two attributes come from the calibration script
-        self.intrinsic_matrix = pd.read_csv(str(Path(os.path.abspath(os.path.dirname(__file__))).parent) 
-                                            + "/cam_details/{}x/intrinsic_matrix.txt".format(int(msg)), 
-                                            delim_whitespace=True, 
-                                            header=None).to_numpy()
-        
-        #self.intrinsic_newmatrix = pd.read_csv(str(Path(os.path.abspath(os.path.dirname(__file__))).parent) 
-        #                                     + "/cam_details/newcam_intrinsics.txt", 
-        #                                     delim_whitespace=True, 
-        #                                     header=None).to_numpy()
-        
-        self.dist_coefficients = pd.read_csv(str(Path(os.path.abspath(os.path.dirname(__file__))).parent) 
-                                             + "/cam_details/{}x/dist_coefficients.txt".format(int(msg)), 
-                                             delim_whitespace=True, 
-                                             header=None).to_numpy() 
+        if msg.data >= 0:
+            # The following two attributes come from the calibration script
+            self.intrinsic_matrix = pd.read_csv(str(Path(os.path.abspath(os.path.dirname(__file__))).parent) 
+                                                + "/cam_details/{}x/intrinsic_matrix.txt".format(int(msg.data)), 
+                                                delim_whitespace=True, 
+                                                header=None).to_numpy()
+            
+            #self.intrinsic_newmatrix = pd.read_csv(str(Path(os.path.abspath(os.path.dirname(__file__))).parent) 
+            #                                     + "/cam_details/newcam_intrinsics.txt", 
+            #                                     delim_whitespace=True, 
+            #                                     header=None).to_numpy()
+            
+            self.dist_coefficients = pd.read_csv(str(Path(os.path.abspath(os.path.dirname(__file__))).parent) 
+                                                + "/cam_details/{}x/dist_coefficients.txt".format(int(msg.data)), 
+                                                delim_whitespace=True, 
+                                                header=None).to_numpy() 
     
     def _denormalize(self, points):
         """
@@ -287,7 +289,7 @@ class Stalker(Node):
 
         Args:
             points (numpy.ndarray): Array of shape (N, 2).
-                                     Array of normalized pixel coords (x, y) 
+                                    Array of normalized pixel coords (x, y) 
                                     of detected objects in the image. 
         
         Returns:
@@ -309,14 +311,17 @@ class Stalker(Node):
         #Localize point in World Coords
         #Transform Point to a Homogeneous Point
         points = np.vstack((points, np.ones((1, len(points[0,:])))))
+        self.get_logger().info('Points px_coords: \n{}'.format(points))
         
         A_ckpx = np.linalg.inv(self.intrinsic_matrix) @ points 
+        self.get_logger().info('intrinsic_matrix: \n{}'.format(self.intrinsic_matrix))
+        self.get_logger().info('A_ckpx: \n{}'.format(A_ckpx))
         #R_wc = t_wc[0:3, 0:3]
         #O_wc = t_wc[0:3, 3][:, np.newaxis]
         Z = np.asarray([[0],[0],[1]])
 
         #Point K with respect to World Frame
-        A_wk = self.O_wc + (-self.O_wc[2,:]/(np.dot(self.R_wc, A_ckpx)[2,:]))*np.dot(self.R_wc, A_ckpx)
+        A_wk = self.O_wc + (-self.O_wc[2,:]/(np.dot(self.R_wc, A_ckpx)[2,:])) * np.dot(self.R_wc, A_ckpx)
         
         # This last transformation is just to have the points
         # in a format where each row represents a unique point
@@ -330,6 +335,96 @@ class Stalker(Node):
 
         return A_wk_polar
 
+
+
+    def localize2(self, points):
+        """_summary_
+        Args:
+            points (_type_): raw pixel points from yolo model
+        Returns:
+            _type_: _description_
+        """
+        points = self._denormalize(points) 
+        #points = self._shift(points)
+        points = self._undistort(points, self.intrinsic_matrix, self.dist_coefficients)
+        
+        # These points will be rearrange to be:
+        #   row0: x
+        #   row1: y
+        #   columns: represents individual points   
+        points = points.transpose()
+
+        #Localize point in World Coords
+        #Transform Point to a Homogeneous Point
+        points = np.vstack((points, np.ones((1, len(points[0,:])))))
+        self.get_logger().info('Points px_coords: \n{}'.format(points))
+
+        #Drone pose relative to World frame:
+        phi   = 0
+        theta = 0
+        psi   = 0
+        Od_x  = 0
+        Od_y  = 0
+        Od_z  = 0.235
+
+        rot_x = np.asarray([[1,           0,            0],
+                            [0, np.cos(phi), -np.sin(phi)],
+                            [0, np.sin(phi),  np.cos(phi)]])
+
+        rot_y = np.asarray([[np.cos(theta),  0, np.sin(theta)],
+                            [0,              1,             0],
+                            [-np.sin(theta), 0, np.cos(theta)]])
+
+        rot_z = np.asarray([[np.cos(psi), -np.sin(psi), 0],
+                            [np.sin(psi),  np.cos(psi), 0],
+                            [0,                      0, 1]])
+
+        rot_wd = rot_x @ rot_y @ rot_z
+        t_wd = np.vstack((rot_wd, [0,0,0]))
+        t_wd = np.hstack((t_wd, [[Od_x], [Od_y], [Od_z], [1]]))
+
+
+        #Camera pose relative to Drone frame:
+        #For the moment we are just assuming that the camera is fixed
+        #to the drone's movement. Later we will need to provide the gimball
+        #orientation to have the correct matrix for the camera relative to 
+        #the drone.
+        t_dc = np.asarray([[ 0,  0, 1, 0],
+                           [-1,  0, 0, 0],
+                           [ 0, -1, 0, 0],
+                           [ 0,  0, 0, 1]])
+
+        #Camera pose relative to World frame:
+        t_wc = t_wd@t_dc
+        
+        A_ckpx = np.linalg.inv(self.intrinsic_matrix) @ points 
+        self.get_logger().info('intrinsic_matrix: \n{}'.format(self.intrinsic_matrix))
+        
+        R_wc = t_wc[0:3, 0:3]
+        O_wc = t_wc[0:3, 3][:, np.newaxis]
+        Z = np.asarray([[0],[0],[1]])
+
+        #Point K with respect to World Frame
+        A_wk = O_wc + (-O_wc[2,:]/(np.dot(R_wc, A_ckpx)[2,:])) * np.dot(R_wc, A_ckpx)
+        self.get_logger().info('DOT1: \n{}'.format((-O_wc[2,:]/(np.dot(R_wc, A_ckpx)[2,:]))))
+        self.get_logger().info('DOT2: \n{}'.format(np.dot(R_wc, A_ckpx)))
+        self.get_logger().info('DOT3: \n{}'.format((-O_wc[2,:]/(np.dot(R_wc, A_ckpx)[2,:])) * np.dot(R_wc, A_ckpx)))
+        
+        # This last transformation is just to have the points
+        # in a format where each row represents a unique point
+        # instead of the mathematical matrix representation
+        # where each column represents a unique point.
+        A_wk = np.transpose(A_wk)
+
+        self.get_logger().info('A_wk: \n{}'.format(A_wk))
+        #Point K with respect to World Frame in Polar coords
+        #Point K with respect to World Frame in Polar coords
+        A_wk_polar = self._cart2pol(A_wk)
+
+ 
+
+        return A_wk_polar
+    
     def stalking_callback(self):
         """
         Main loop of the ros node (stalker) 
@@ -350,16 +445,18 @@ class Stalker(Node):
                                              t.transform.rotation.x,
                                              t.transform.rotation.y,
                                              t.transform.rotation.z,])     
-           
+        #self.get_logger().info('R_wc: \n{}'.format(self.R_wc))   
         self.O_wc = np.array([t.transform.translation.x, 
                               t.transform.translation.y, 
                               t.transform.translation.z]).reshape((3,1))
+        #self.get_logger().info('O_wc: \n{}'.format(self.O_wc)) 
         
         #self.get_logger().info('Camera position: {}'.format(self.O_wc))
 
         # Process the current video frame to localize vessels
         for result in self.__tracker:
             frame = result.orig_img
+            self.get_logger().info('FRAME SIZE: \n{}'.format(frame.shape)) 
             detections = sv.Detections.from_yolov8(result)
             
             # Normalized Bounding Boxes of detected boats
@@ -389,8 +486,8 @@ class Stalker(Node):
             
     
 def main(args=None):
-    rclpy.init(args=args) 
-    stalker_node = Stalker(device=0, classes=[32, 49])
+    rclpy.init(args=args)
+    stalker_node = Stalker(device=3, classes=[32, 49], camera_resolution=(1920, 1080))
     rclpy.spin(stalker_node)
     stalker_node.destroy_node()
     rclpy.shutdown()

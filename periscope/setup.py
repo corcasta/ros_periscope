@@ -28,8 +28,9 @@ setup(
             'stalker = periscope.nodes.stalker:main',
             'camera_controller = periscope.nodes.camera_controller:main',
             'video = periscope.nodes.video_sub:main',
+            'drone_odometry = periscope.nodes.px4_odometry_transform:main',
+            'gimbal_orientation = periscope.nodes.gimbal_tf2_broadcaster:main',
             'camera_orientation = periscope.nodes.camera_tf2_broadcaster:main',
-            'drone_odometry = periscope.nodes.px4_odometry_transform:main'
         ],
     },
 )
