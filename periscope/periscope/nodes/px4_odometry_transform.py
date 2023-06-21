@@ -39,6 +39,8 @@ class OdometryListener(Node):
         
         # Child frame
         self.__trans.child_frame_id = 'drone'    
+        
+        self.__initial_pose()  
      
         
     def publish_drone_tf2(self):
@@ -47,6 +49,21 @@ class OdometryListener(Node):
         
         self.__pwcs.header.frame_id = "drone"
         self._publisher.publish(self.__pwcs)
+    
+    
+    
+    def __initial_pose(self):   
+        self.__trans.transform.translation.x = self.__pwcs.pose.pose.position.x = 0.0
+        self.__trans.transform.translation.y = self.__pwcs.pose.pose.position.y = 0.0
+        self.__trans.transform.translation.z = self.__pwcs.pose.pose.position.z = 0.0
+        
+        self.__trans.transform.rotation.w = self.__pwcs.pose.pose.orientation.w = 1.0
+        self.__trans.transform.rotation.x = self.__pwcs.pose.pose.orientation.x = 0.0
+        self.__trans.transform.rotation.y = self.__pwcs.pose.pose.orientation.y = 0.0
+        self.__trans.transform.rotation.z = self.__pwcs.pose.pose.orientation.z = 0.0
+            
+        self.__pwcs.pose.covariance = np.zeros(36)
+        
         
     def px4_to_ros_callback(self, msg):
         """
