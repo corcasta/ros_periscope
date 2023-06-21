@@ -55,7 +55,7 @@ class OdometryListener(Node):
     def __initial_pose(self):   
         self.__trans.transform.translation.x = self.__pwcs.pose.pose.position.x = 0.0
         self.__trans.transform.translation.y = self.__pwcs.pose.pose.position.y = 0.0
-        self.__trans.transform.translation.z = self.__pwcs.pose.pose.position.z = 0.0
+        self.__trans.transform.translation.z = self.__pwcs.pose.pose.position.z = 1.5#+4.17
         
         self.__trans.transform.rotation.w = self.__pwcs.pose.pose.orientation.w = 1.0
         self.__trans.transform.rotation.x = self.__pwcs.pose.pose.orientation.x = 0.0

@@ -11,10 +11,10 @@ class DynamicGimbalPoseBroadcaster(Node):
     def __init__(self, x, y, z):
         super().__init__('dynamic_gimbal_frame_tf2_Broadcaster')
         
-        #self._subscription = self.create_subscription(Vector3Stamped,
-        #                                             "/ZR30/get_gimbal_attitude",
-        #                                             self.gimbal_pose_callback,
-        #                                             10)
+        self._subscription = self.create_subscription(Vector3Stamped,
+                                                     "/ZR30/get_gimbal_attitude",
+                                                     self.gimbal_pose_callback,
+                                                     10)
 
 
         self._publisher = self.create_publisher(PoseWithCovarianceStamped,
@@ -56,8 +56,7 @@ class DynamicGimbalPoseBroadcaster(Node):
         self.__trans.transform.rotation.w = self.__pwcs.pose.pose.orientation.w = 1.0
         self.__trans.transform.rotation.x = self.__pwcs.pose.pose.orientation.x = 0.0
         self.__trans.transform.rotation.y = self.__pwcs.pose.pose.orientation.y = 0.0
-        self.__trans.transform.rotation.z = self.__pwcs.pose.pose.orientation.z = 0.0
-            
+        self.__trans.transform.rotation.z = self.__pwcs.pose.pose.orientation.z = 0.0            
         self.__pwcs.pose.covariance = np.zeros(36)
         
             
@@ -95,7 +94,7 @@ class DynamicGimbalPoseBroadcaster(Node):
 
 def main():
     rclpy.init()
-    node = DynamicGimbalPoseBroadcaster(x=0, y=0, z=0.238)
+    node = DynamicGimbalPoseBroadcaster(x=0, y=0, z=-0.28)
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:

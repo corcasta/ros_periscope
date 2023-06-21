@@ -49,8 +49,8 @@ class Stalker(Node):
         self.__parent_path = str(Path(self.__base_path).parent)
         self.__relative_path_model = "/weights/{}".format(model)
         self.__detector = YOLO(self.__parent_path  + self.__relative_path_model)
-        self.__tracker = self.__detector.track(#source="rtsp://192.168.144.25:8554/main.264",#
-                                               source=device, 
+        self.__tracker = self.__detector.track(source="rtsp://192.168.144.25:8554/main.264",
+                                               #source=device, 
                                                classes=classes,
                                                conf=0.3, 
                                                show=False,
@@ -83,7 +83,7 @@ class Stalker(Node):
         
         # The following two attributes come from the calibration script
         self.intrinsic_matrix = pd.read_csv(str(Path(os.path.abspath(os.path.dirname(__file__))).parent) 
-                                            + "/cam_details/1x/intrinsic_matrix.txt", 
+                                            + "/cam_details/1.0x/intrinsic_matrix.txt", 
                                             delim_whitespace=True, 
                                             header=None).to_numpy()
         
@@ -93,7 +93,7 @@ class Stalker(Node):
         #                                     header=None).to_numpy()
         
         self.dist_coefficients = pd.read_csv(str(Path(os.path.abspath(os.path.dirname(__file__))).parent) 
-                                             + "/cam_details/1x/dist_coefficients.txt", 
+                                             + "/cam_details/1.0x/dist_coefficients.txt", 
                                              delim_whitespace=True, 
                                              header=None).to_numpy()
         
@@ -134,10 +134,10 @@ class Stalker(Node):
         Returns:
             None
         """
-        if msg.data >= 0:
+        if np.round(msg.data, 1) == 1.0 or np.round(msg.data, 1) == 5.3 or np.round(msg.data, 1) == 10.2 or np.round(msg.data, 1) == 19.3:
             # The following two attributes come from the calibration script
             self.intrinsic_matrix = pd.read_csv(str(Path(os.path.abspath(os.path.dirname(__file__))).parent) 
-                                                + "/cam_details/{}x/intrinsic_matrix.txt".format(int(msg.data)), 
+                                                + "/cam_details/{}x/intrinsic_matrix.txt".format(np.round(msg.data, 1)), 
                                                 delim_whitespace=True, 
                                                 header=None).to_numpy()
             
@@ -147,7 +147,7 @@ class Stalker(Node):
             #                                     header=None).to_numpy()
             
             self.dist_coefficients = pd.read_csv(str(Path(os.path.abspath(os.path.dirname(__file__))).parent) 
-                                                + "/cam_details/{}x/dist_coefficients.txt".format(int(msg.data)), 
+                                                + "/cam_details/{}x/dist_coefficients.txt".format(np.round(msg.data, 1)), 
                                                 delim_whitespace=True, 
                                                 header=None).to_numpy() 
     
@@ -314,11 +314,11 @@ class Stalker(Node):
         self.get_logger().info('Points px_coords: \n{}'.format(points))
         
         A_ckpx = np.linalg.inv(self.intrinsic_matrix) @ points 
-        self.get_logger().info('intrinsic_matrix: \n{}'.format(self.intrinsic_matrix))
-        self.get_logger().info('A_ckpx: \n{}'.format(A_ckpx))
+        #self.get_logger().info('intrinsic_matrix: \n{}'.format(self.intrinsic_matrix))
+        #self.get_logger().info('A_ckpx: \n{}'.format(A_ckpx))
         #R_wc = t_wc[0:3, 0:3]
         #O_wc = t_wc[0:3, 3][:, np.newaxis]
-        Z = np.asarray([[0],[0],[1]])
+        #Z = np.asarray([[0],[0],[1]])
 
         #Point K with respect to World Frame
         A_wk = self.O_wc + (-self.O_wc[2,:]/(np.dot(self.R_wc, A_ckpx)[2,:])) * np.dot(self.R_wc, A_ckpx)
@@ -452,11 +452,13 @@ class Stalker(Node):
         #self.get_logger().info('O_wc: \n{}'.format(self.O_wc)) 
         
         #self.get_logger().info('Camera position: {}'.format(self.O_wc))
-
+        
+        
+        self.get_logger().info('intrinsic_matrix: {}'.format(self.intrinsic_matrix))
         # Process the current video frame to localize vessels
         for result in self.__tracker:
             frame = result.orig_img
-            self.get_logger().info('FRAME SIZE: \n{}'.format(frame.shape)) 
+            #self.get_logger().info('FRAME SIZE: \n{}'.format(frame.shape)) 
             detections = sv.Detections.from_yolov8(result)
             
             # Normalized Bounding Boxes of detected boats
@@ -487,7 +489,7 @@ class Stalker(Node):
     
 def main(args=None):
     rclpy.init(args=args)
-    stalker_node = Stalker(device=3, classes=[32, 49], camera_resolution=(1920, 1080))
+    stalker_node = Stalker(device=3, classes=[32, 49], camera_resolution=(1280, 720))
     rclpy.spin(stalker_node)
     stalker_node.destroy_node()
     rclpy.shutdown()
