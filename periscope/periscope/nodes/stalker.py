@@ -125,7 +125,7 @@ class Stalker(Node):
           
     def __update_camera_details(self, msg):
         """
-        Updates values representing the intrinsic matrix and the dist
+        Updates values representing the intrinsic matrix and the distortion
         coefficients corresponding the lense being used.
 
         Args:
@@ -313,12 +313,7 @@ class Stalker(Node):
         points = np.vstack((points, np.ones((1, len(points[0,:])))))
         self.get_logger().info('Points px_coords: \n{}'.format(points))
         
-        A_ckpx = np.linalg.inv(self.intrinsic_matrix) @ points 
-        self.get_logger().info('intrinsic_matrix: \n{}'.format(self.intrinsic_matrix))
-        self.get_logger().info('A_ckpx: \n{}'.format(A_ckpx))
-        #R_wc = t_wc[0:3, 0:3]
-        #O_wc = t_wc[0:3, 3][:, np.newaxis]
-        Z = np.asarray([[0],[0],[1]])
+        A_ckpx = np.linalg.inv(self.intrinsic_matrix) @ points
 
         #Point K with respect to World Frame
         A_wk = self.O_wc + (-self.O_wc[2,:]/(np.dot(self.R_wc, A_ckpx)[2,:])) * np.dot(self.R_wc, A_ckpx)
@@ -330,7 +325,7 @@ class Stalker(Node):
         A_wk = A_wk.transpose()
         self.get_logger().info('Target coords: \n{}'.format(A_wk))
         
-        #Point K with respect to World Frame in Polar coords
+        # Point K with respect to World Frame in Polar coords
         A_wk_polar = self._cart2pol(A_wk)
 
         return A_wk_polar
@@ -445,18 +440,14 @@ class Stalker(Node):
                                              t.transform.rotation.x,
                                              t.transform.rotation.y,
                                              t.transform.rotation.z,])     
-        #self.get_logger().info('R_wc: \n{}'.format(self.R_wc))   
+
         self.O_wc = np.array([t.transform.translation.x, 
                               t.transform.translation.y, 
                               t.transform.translation.z]).reshape((3,1))
-        #self.get_logger().info('O_wc: \n{}'.format(self.O_wc)) 
         
-        #self.get_logger().info('Camera position: {}'.format(self.O_wc))
-
         # Process the current video frame to localize vessels
         for result in self.__tracker:
             frame = result.orig_img
-            self.get_logger().info('FRAME SIZE: \n{}'.format(frame.shape)) 
             detections = sv.Detections.from_yolov8(result)
             
             # Normalized Bounding Boxes of detected boats

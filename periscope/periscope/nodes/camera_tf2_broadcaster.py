@@ -7,7 +7,6 @@ from geometry_msgs.msg import Vector3Stamped, TransformStamped, PoseWithCovarian
 
 
 class DynamicCameraPoseBroadcaster(Node):
-
     def __init__(self):
         super().__init__('dynamic_camera_frame_tf2_Broadcaster')
 
@@ -39,6 +38,12 @@ class DynamicCameraPoseBroadcaster(Node):
         self.__initial_pose()
     
     def publish_camera_tf2(self):
+        """
+        Publishes camera transform
+        
+        Returns: 
+            None
+        """
         self.__trans.header.stamp = self.__pwcs.header.stamp = self.get_clock().now().to_msg()
         self.__tf_broadcaster.sendTransform(self.__trans)
         
@@ -46,7 +51,13 @@ class DynamicCameraPoseBroadcaster(Node):
         self._publisher.publish(self.__pwcs)
         
         
-    def __initial_pose(self):   
+    def __initial_pose(self):
+        """
+        Sets camera pose
+        
+        Returns:
+            None
+        """   
         self.__trans.transform.rotation.w = self.__pwcs.pose.pose.orientation.w =  0.5
         self.__trans.transform.rotation.x = self.__pwcs.pose.pose.orientation.x = -0.5
         self.__trans.transform.rotation.y = self.__pwcs.pose.pose.orientation.y =  0.5

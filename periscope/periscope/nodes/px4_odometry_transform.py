@@ -40,7 +40,7 @@ class OdometryListener(Node):
         # Child frame
         self.__trans.child_frame_id = 'drone'    
         
-        self.__initial_pose()  
+        #self.__initial_pose()  
      
         
     def publish_drone_tf2(self):
@@ -52,7 +52,10 @@ class OdometryListener(Node):
     
     
     
-    def __initial_pose(self):   
+    def __initial_pose(self):  
+        """
+        This method is intended to be used just for debugging purposes
+        """ 
         self.__trans.transform.translation.x = self.__pwcs.pose.pose.position.x = 0.0
         self.__trans.transform.translation.y = self.__pwcs.pose.pose.position.y = 0.0
         self.__trans.transform.translation.z = self.__pwcs.pose.pose.position.z = 0.0
