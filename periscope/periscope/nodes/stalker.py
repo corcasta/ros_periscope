@@ -27,14 +27,14 @@ from tf2_ros.transform_listener import TransformListener
 
 
 class Stalker(Node):
-    def __init__(self, device=0, model="yolo_demo.pt", classes=[32], camera_resolution=(1920, 1080)):
+    def __init__(self, source="rtsp://192.168.144.25:8554/main.264", model="yolo_demo.pt", classes=[32], camera_resolution=(1920, 1080)):
         """
         In charge of doing all the setup and processing for target localization 
         and publishing coordinates across subscribed nodes.
         
         Args:
-            device (int, optional): Camera to listen for input. 
-                                    Defaults to 0.
+            source (int, rtsp, optional): Camera to listen for input. 
+                                          Defaults to "rtsp://192.168.144.25:8554/main.264".
             model (string, optional): Model's file name.
                                       Defaults to "yolo_demo.pt"
             classes (list, optional): Which clases to detect while using Yolo model. 
@@ -49,8 +49,7 @@ class Stalker(Node):
         self.__parent_path = str(Path(self.__base_path).parent)
         self.__relative_path_model = "/weights/{}".format(model)
         self.__detector = YOLO(self.__parent_path  + self.__relative_path_model)
-        self.__tracker = self.__detector.track(#source="rtsp://192.168.144.25:8554/main.264",#
-                                               source=device, 
+        self.__tracker = self.__detector.track(source=source, 
                                                classes=classes,
                                                conf=0.3, 
                                                show=False,
@@ -478,7 +477,7 @@ class Stalker(Node):
     
 def main(args=None):
     rclpy.init(args=args)
-    stalker_node = Stalker(device=3, classes=[32, 49], camera_resolution=(1920, 1080))
+    stalker_node = Stalker(classes=[32, 49], camera_resolution=(1920, 1080))
     rclpy.spin(stalker_node)
     stalker_node.destroy_node()
     rclpy.shutdown()
