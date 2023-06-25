@@ -2,6 +2,7 @@
 This package is intended for use in the **MBZIRC 2024** competition. It contains the infrastructure for detecting and locating marine boats using a camera mounted on a drone. Only trained and/or customized model from the YoloV8 family needs to be provided (the current package includes 4 pre-trained models by default).
 
 Package file structure:  
+- **launch/** This directory contains all launch files.
 - **cam_details/** This directory contains camera intrinsics and distortion coefficients data.
 - **nodes/** This directory contains all nodes scripts.
 - **videos/**  This directory contains all videos for benchmark and testing.
@@ -27,6 +28,11 @@ If you are using virtual environments with ros, you can leave the following code
 [build_scripts]
 executable=/usr/bin/env python3	
 ```
+## Launch Periscope
+It is important to mentioned that before launching, either gazebo simulator must be initialized with the px4 agent/client or the real drone is on. Also make sure that the camera connection is establsihed appropriatly.
+ ```bash
+ ros2 launch periscope_demo.py
+ ```
 
 ## Demo node
 Node used to test the detection capability of the trained model. It can be considered as a benchmark application.
@@ -47,8 +53,10 @@ ros2 run periscope demo
 
 ## Stalker node
 Main node responsible for the detection and localization of the boats.
+- Current Subscriptions Topics: 
+    - **/ZR30/get_zoom_level** Current zoom level used by the camera.
 
-- Subscriptions Topics: 
+- Optional Subscriptions Topics: 
     - **/drone_posecov** Current pose of the drone and its respective covariance.
     - **/camera_posecov** Current pose of the camera and its respective covariance.
 
@@ -59,8 +67,8 @@ Main node responsible for the detection and localization of the boats.
 **ULTRA Important**, before starting the node make sure to have define the appropriate params for your system when creating a Stalker node object inside main in `stalker.py`  
 ```text
 Args:
-    device (int, optional): Camera to listen for input. 
-                            Defaults to 0.
+    source (int, rtsp, optional): Camera to listen for input. 
+                            Defaults to "rtsp://192.168.144.25:8554/main.264".
     model (string, optional): Model's weights file name.
                               Defaults to "yolo_demo.pt"
     classes (list, optional): Which classes ids to detect while using Yolo model. 
@@ -72,7 +80,7 @@ Apply your changes here:
 ```python
 def main(args=None):
     rclpy.init(args=args) 
-    stalker_node = Stalker(device=0, 
+    stalker_node = Stalker(source=0, 
                            classes=[32, 49], 
                            camera_resolution=(640, 640))
     rclpy.spin(stalker_node)
@@ -89,3 +97,6 @@ Node used solely for visualizing model detections.
 ```bash
 ros2 run periscope video
 ```
+
+## Transforms nodes
+The following nodes: camera_orientation, gimbal_orientation and drone_odometry, are all related to listening to the appropriate sources for calculating their curresponding local poses. Then they are related between eacho other through the used of transforms. To understand their data sources please look at their scripts: camera_tf2_broadcaster.py, gimbal_tf2_broadcaster.py, px4_odometry_transform.py
