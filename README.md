@@ -1,5 +1,6 @@
 # Periscope package
 This package is intended for use in the **MBZIRC 2024** competition. It contains the infrastructure for detecting and locating marine boats using a camera mounted on a drone. Only trained and/or customized model from the YoloV8 family needs to be provided (the current package includes 4 pre-trained models by default).
+![Sample output image](https://www.labelvisor.com/content/images/size/w1200/2024/11/LVmain--55-.jpg)
 
 Package file structure:  
 - **launch/** This directory contains all launch files.
